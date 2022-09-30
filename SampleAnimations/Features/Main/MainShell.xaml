@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	   xmlns:animations="clr-namespace:SampleAnimations.Features.MicrosoftMauiAnimations"
+	   xmlns:controls="clr-namespace:SampleAnimations.Features.MicrosoftMauiControls"
+	   xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	   x:Class="SampleAnimations.Features.Main.MainShell"
+	   Shell.FlyoutBehavior="Flyout">
+
+	<ShellContent Title="MicrosoftMauiAnimations"
+				  ContentTemplate="{DataTemplate animations:SampleAnimationPage}" />
+
+	<ShellContent Title="MicrosoftMauiControls"
+				  ContentTemplate="{DataTemplate controls:SampleAnimationPage}" />
+
+</Shell>

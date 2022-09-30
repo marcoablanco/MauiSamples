@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:t="clr-namespace:SampleAnimations.Resources.Translations"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SampleAnimations.Features.MicrosoftMauiAnimations.SampleAnimationPage"
+             Title="MicrosoftMauiAnimations">
+	<Grid RowDefinitions="*,*">
+		<Label x:Name="LblShowAnimation"
+			   Text="{Static t:Text.SampleAnimationText}"
+			   HorizontalOptions="Center" VerticalOptions="Center" />
+		
+		<Button x:Name="BtnStart"
+				Grid.Row="1"
+				Text="{Static t:Text.StartAnimation}"
+				HorizontalOptions="Center" VerticalOptions="Center" />
+	</Grid>
+</ContentPage>
