@@ -2,7 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 			 x:Class="PerformanceInit.App.MainPage">
-	<Grid ColumnDefinitions="*,*" RowDefinitions="100,*,100">
+	<Grid ColumnDefinitions="*,*" RowDefinitions="100,100,*,100">
 		<Button x:Name="BtnIoC" 
 				Grid.Column="0"
 				Text="Resuelve servicios con IoC puro"
@@ -10,11 +10,16 @@
 				Margin="10" />
 		<Button x:Name="BtnSP" 
 				Grid.Column="1"
-				Text="Resuelve servicios con ServiceProvider"
+				Text="Resuelve servicios inyectando ServiceProvider"
+				LineBreakMode="WordWrap" 
+				Margin="10" />
+		<Button x:Name="BtnEmptyService" 
+				Grid.Column="0" Grid.Row="1"
+				Text="Resuelve servicios a saco"
 				LineBreakMode="WordWrap" 
 				Margin="10" />
 
-		<CollectionView x:Name="ListTime" Grid.ColumnSpan="2" Grid.Row="1">
+		<CollectionView x:Name="ListTime" Grid.ColumnSpan="2" Grid.Row="2">
 			<CollectionView.ItemTemplate>
 				<DataTemplate>
 					<Label Text="{Binding .}" />
@@ -23,12 +28,12 @@
 		</CollectionView>
 
 		<Label x:Name="LblIoC"
-				Grid.Column="0" Grid.Row="2"
+				Grid.Column="0" Grid.Row="3"
 				LineBreakMode="WordWrap"
 				Margin="10" />
 
 		<Label x:Name="LblSP"
-				Grid.Column="1" Grid.Row="2"
+				Grid.Column="1" Grid.Row="3"
 				LineBreakMode="WordWrap"
 				Margin="10" />
 	</Grid>

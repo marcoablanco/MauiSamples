@@ -1,5 +1,6 @@
 ﻿using Android.App;
 using Android.Runtime;
+using System.Diagnostics;
 
 namespace PerformanceInit.App;
 
@@ -11,5 +12,13 @@ public class MainApplication : MauiApplication
 	{
 	}
 
-	protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
+	protected override MauiApp CreateMauiApp()
+	{
+
+		Stopwatch stopwatch = Stopwatch.StartNew();
+		MauiApp app = MauiProgram.CreateMauiApp();
+		stopwatch.Stop();
+		Console.WriteLine($"---Tiempo en crear MauiApp: {stopwatch.ElapsedMilliseconds}.");
+		return app;
+	}
 }

@@ -1,4 +1,5 @@
-﻿namespace PerformanceInit.App;
+﻿
+namespace PerformanceInit.App;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
