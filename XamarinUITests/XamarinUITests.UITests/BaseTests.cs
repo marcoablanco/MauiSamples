@@ -29,7 +29,7 @@
 		}
 
 		/// <summary>
-		/// Carefoul, can be many object with the same text.
+		/// Be careful, my young padawan, can be many object with the same text.
 		/// </summary>
 
 		protected void TapByText(string text)
@@ -44,7 +44,7 @@
 		}
 
 		/// <summary>
-		/// Carefoul, can be many object with the same text.
+		/// Be careful, my young padawan, can be many object with the same text.
 		/// </summary>
 		protected bool CheckByText(string text)
 		{
