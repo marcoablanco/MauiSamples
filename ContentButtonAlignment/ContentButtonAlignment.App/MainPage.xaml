@@ -5,41 +5,50 @@
              x:Class="ContentButtonAlignment.App.MainPage">
 
 	<Grid RowDefinitions="*,*,*" ColumnDefinitions="*,*,*">
+		<Grid.Resources>
+			<ResourceDictionary>
+				<Style TargetType="app:ButtonControl">
+					<Setter Property="Margin" Value="5,20" />
+					<Setter Property="Background" Value="DarkRed" />
+					<Setter Property="TextColor" Value="White" />
+				</Style>
+			</ResourceDictionary>
+		</Grid.Resources>
 
 		<app:ButtonControl Grid.Row="0" Grid.Column="0"
-						   Text="Prueba"
+						   Text="Arriba izquierda"
 						   HorizontalTextAlignment="Start" VerticalTextAlignment="Start" />
 
 		<app:ButtonControl Grid.Row="0" Grid.Column="1"
-						   Text="Prueba"
+						   Text="Arriba centro"
 						   HorizontalTextAlignment="Center" VerticalTextAlignment="Start" />
 
 		<app:ButtonControl Grid.Row="0" Grid.Column="2"
-						   Text="Prueba"
+						   Text="Arriba derecha"
 						   HorizontalTextAlignment="End" VerticalTextAlignment="Start" />
 
 		<app:ButtonControl Grid.Row="1" Grid.Column="0"
-						   Text="Prueba"
+						   Text="Centro izquierda"
 						   HorizontalTextAlignment="Start" VerticalTextAlignment="Center" />
 
 		<app:ButtonControl Grid.Row="1" Grid.Column="1"
-						   Text="Prueba"
+						   Text="Centro"
 						   HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
 
 		<app:ButtonControl Grid.Row="1" Grid.Column="2"
-						   Text="Prueba"
+						   Text="Centro derecha"
 						   HorizontalTextAlignment="End" VerticalTextAlignment="Center" />
 
 		<app:ButtonControl Grid.Row="2" Grid.Column="0"
-						   Text="Prueba"
+						   Text="Abajo izquierda"
 						   HorizontalTextAlignment="Start" VerticalTextAlignment="End" />
 
 		<app:ButtonControl Grid.Row="2" Grid.Column="1"
-						   Text="Prueba"
+						   Text="Abajo Centro"
 						   HorizontalTextAlignment="Center" VerticalTextAlignment="End" />
 
 		<app:ButtonControl Grid.Row="2" Grid.Column="2"
-						   Text="Prueba"
+						   Text="Abajo derecha"
 						   HorizontalTextAlignment="End" VerticalTextAlignment="End" />
 	</Grid>
 </ContentPage>
