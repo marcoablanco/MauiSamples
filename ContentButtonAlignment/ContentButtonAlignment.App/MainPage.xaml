@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:app="clr-namespace:ContentButtonAlignment.App"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ContentButtonAlignment.App.MainPage">
+
+	<Grid RowDefinitions="*,*,*" ColumnDefinitions="*,*,*">
+
+		<app:ButtonControl Grid.Row="0" Grid.Column="0"
+						   Text="Prueba"
+						   HorizontalTextAlignment="Start" VerticalTextAlignment="Start" />
+
+		<app:ButtonControl Grid.Row="0" Grid.Column="1"
+						   Text="Prueba"
+						   HorizontalTextAlignment="Center" VerticalTextAlignment="Start" />
+
+		<app:ButtonControl Grid.Row="0" Grid.Column="2"
+						   Text="Prueba"
+						   HorizontalTextAlignment="End" VerticalTextAlignment="Start" />
+
+		<app:ButtonControl Grid.Row="1" Grid.Column="0"
+						   Text="Prueba"
+						   HorizontalTextAlignment="Start" VerticalTextAlignment="Center" />
+
+		<app:ButtonControl Grid.Row="1" Grid.Column="1"
+						   Text="Prueba"
+						   HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+
+		<app:ButtonControl Grid.Row="1" Grid.Column="2"
+						   Text="Prueba"
+						   HorizontalTextAlignment="End" VerticalTextAlignment="Center" />
+
+		<app:ButtonControl Grid.Row="2" Grid.Column="0"
+						   Text="Prueba"
+						   HorizontalTextAlignment="Start" VerticalTextAlignment="End" />
+
+		<app:ButtonControl Grid.Row="2" Grid.Column="1"
+						   Text="Prueba"
+						   HorizontalTextAlignment="Center" VerticalTextAlignment="End" />
+
+		<app:ButtonControl Grid.Row="2" Grid.Column="2"
+						   Text="Prueba"
+						   HorizontalTextAlignment="End" VerticalTextAlignment="End" />
+	</Grid>
+</ContentPage>
