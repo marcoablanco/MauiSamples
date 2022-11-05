@@ -1,0 +1,1 @@
+Tutorial y explicación en: https://www.notodoesprogramacion.es/2022/11/alineacion-de-texto-en-botones-en-maui/
