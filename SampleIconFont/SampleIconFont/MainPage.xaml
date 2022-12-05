@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:fonts="clr-namespace:SampleIconFont.Resources.Fonts"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SampleIconFont.MainPage">
+
+    <ScrollView>
+        <Grid RowDefinitions="*,*,*,*,*,*,*" ColumnDefinitions="*,*"
+			  RowSpacing="20"
+			  VerticalOptions="Center">
+
+			<Label Grid.Row="0" Grid.Column="0"
+				   Text="IcoFontFamily" HorizontalTextAlignment="Center" />
+
+			<Label Grid.Row="0" Grid.Column="1"
+				   Text="MaterialDesignIconFontFamily" HorizontalTextAlignment="Center" />
+
+			
+			
+			<Image Grid.Row="1" Grid.Column="0"
+				   WidthRequest="50" HeightRequest="50"
+				   HorizontalOptions="Center">
+				<Image.Source>
+					<FontImageSource FontFamily="{StaticResource IcoFontFamily}" Glyph="{Static fonts:IconFont.User}" Color="Red" />
+				</Image.Source>
+			</Image>
+
+			<Image Grid.Row="1" Grid.Column="1"
+				   WidthRequest="50" HeightRequest="50"
+				   HorizontalOptions="Center">
+				<Image.Source>
+					<FontImageSource FontFamily="{StaticResource MaterialDesignIconFontFamily}" Glyph="{Static fonts:MaterialDesignIcon.Account}" Color="Red" />
+				</Image.Source>
+			</Image>
+
+			
+			
+			<Label Grid.Row="2" Grid.Column="0"
+				   FontFamily="{StaticResource IcoFontFamily}" Text="{Static fonts:IconFont.UiSettings}"
+				   TextColor="Blue" 
+				   HorizontalOptions="Center" />
+
+			<Label Grid.Row="2" Grid.Column="1"
+				   FontFamily="{StaticResource MaterialDesignIconFontFamily}" Text="{Static fonts:MaterialDesignIcon.Cog}"
+				   TextColor="Blue" 
+				   HorizontalOptions="Center" />
+
+			
+			
+			<ImageButton Grid.Row="3" Grid.Column="0"
+						 BackgroundColor="Transparent">
+				<ImageButton.Source>
+					<FontImageSource FontFamily="{StaticResource IcoFontFamily}" Glyph="{Static fonts:IconFont.Home}" Color="Green" />
+				</ImageButton.Source>
+			</ImageButton>
+
+			<ImageButton Grid.Row="3" Grid.Column="1"
+						 BackgroundColor="Transparent">
+				<ImageButton.Source>
+					<FontImageSource FontFamily="{StaticResource MaterialDesignIconFontFamily}" Glyph="{Static fonts:MaterialDesignIcon.Home}" Color="Green" />
+				</ImageButton.Source>
+			</ImageButton>
+
+			
+			
+			<Button Grid.Row="4" Grid.Column="0"
+					BackgroundColor="Transparent">
+				<Button.ImageSource>
+					<FontImageSource FontFamily="{StaticResource IcoFontFamily}" Glyph="{Static fonts:IconFont.Car}" Color="Orange" />
+				</Button.ImageSource>
+			</Button>
+
+			<Button Grid.Row="4" Grid.Column="1"
+					BackgroundColor="Transparent">
+				<Button.ImageSource>
+					<FontImageSource FontFamily="{StaticResource MaterialDesignIconFontFamily}" Glyph="{Static fonts:MaterialDesignIcon.Car}" Color="Orange" />
+				</Button.ImageSource>
+			</Button>
+
+			<Label Grid.Row="5" Grid.ColumnSpan="2"
+				   Text="Ambas fuentes en el mismo control" HorizontalTextAlignment="Center" />
+
+			<Button Grid.Row="6" Grid.ColumnSpan="2"
+					FontFamily="{StaticResource IcoFontFamily}" Text="{Static fonts:IconFont.Book}" TextColor="Brown"
+					BackgroundColor="Transparent">
+				<Button.ImageSource>
+					<FontImageSource FontFamily="{StaticResource MaterialDesignIconFontFamily}" Glyph="{Static fonts:MaterialDesignIcon.Book}" Color="Brown" />
+				</Button.ImageSource>
+			</Button>
+		</Grid>
+    </ScrollView>
+
+</ContentPage>
