@@ -6,7 +6,6 @@ using System.Diagnostics;
 
 internal class CustomLogger : ILogger
 {
-
 	public CustomLogger()
 	{
 	}

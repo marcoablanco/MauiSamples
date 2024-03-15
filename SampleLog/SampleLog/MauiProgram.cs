@@ -20,9 +20,9 @@ public static class MauiProgram
 		builder.Logging.ClearProviders()
 					   .AddDebug();
 #endif
-		builder.Logging.Services.AddTransient<CustomLogger>();
-		builder.Logging.Services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, CustomLoggerProvider>());
-		builder.Logging.AddFilter<CustomLoggerProvider>(_ => true);
+builder.Logging.Services.AddTransient<CustomLogger>();
+builder.Logging.Services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, CustomLoggerProvider>());
+builder.Logging.AddFilter<CustomLoggerProvider>(_ => true);
 
 
 		builder.Services.AddTransient<MainPage>()

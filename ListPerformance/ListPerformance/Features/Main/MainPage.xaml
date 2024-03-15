@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:main="clr-namespace:ListPerformance.Features.Main"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ListPerformance.Features.Main.MainPage">
+
+	<Grid ColumnDefinitions="*,*" RowDefinitions="*,*"
+		  ColumnSpacing="10" RowSpacing="10"
+		  Padding="10">
+
+		<CollectionView x:Name="CollectionWithBindings"
+						Grid.Column="0">
+			<CollectionView.ItemTemplate>
+				<DataTemplate x:DataType="main:NumberModel">
+					<Grid RowDefinitions="*,Auto,*" ColumnDefinitions="*,Auto,*"
+						  Padding="10">
+						<Label Grid.Row="0" Grid.Column="0"
+							   Text="{Binding Property1}" />
+						<Label Grid.Row="0" Grid.Column="1"
+							   Text="{Binding Property2}" 
+							   HorizontalTextAlignment="Center" />
+						<Label Grid.Row="0" Grid.Column="2"
+							   Text="{Binding Property3}" 
+							   HorizontalTextAlignment="End" />
+
+						<Label Grid.Row="1" Grid.Column="0"
+							   Text="{Binding Property4}" />
+						<Label Grid.Row="1" Grid.Column="1"
+							   Text="{Binding Property5}" 
+							   HorizontalTextAlignment="Center" />
+						<Label Grid.Row="1" Grid.Column="2"
+							   Text="{Binding Property6}" 
+							   HorizontalTextAlignment="End" />
+
+						<Label Grid.Row="2" Grid.Column="0"
+							   Text="{Binding Property7}" />
+						<Label Grid.Row="2" Grid.Column="1"
+							   Text="{Binding Property8}" 
+							   HorizontalTextAlignment="Center" />
+						<Label Grid.Row="2" Grid.Column="2"
+							   Text="{Binding Property9}"
+							   HorizontalTextAlignment="End" />
+					</Grid>
+				</DataTemplate>
+			</CollectionView.ItemTemplate>
+		</CollectionView>
+
+		<CollectionView x:Name="CollectionWithSetters"
+						Grid.Column="1">
+			<CollectionView.ItemTemplate>
+				<DataTemplate>
+					<main:NumberCell />
+				</DataTemplate>
+			</CollectionView.ItemTemplate>
+		</CollectionView>
+
+		<ListView x:Name="ListWithBindings"
+				  Grid.Column="0" Grid.Row="1">
+			<ListView.ItemTemplate>
+				<DataTemplate x:DataType="main:NumberModel">
+					<ViewCell>
+						<Grid RowDefinitions="*,Auto,*" ColumnDefinitions="*,Auto,*"
+							  Padding="10">
+							<Label Grid.Row="0" Grid.Column="0"
+								   Text="{Binding Property1}" />
+							<Label Grid.Row="0" Grid.Column="1"
+								   Text="{Binding Property2}" 
+								   HorizontalTextAlignment="Center" />
+							<Label Grid.Row="0" Grid.Column="2"
+								   Text="{Binding Property3}" 
+								   HorizontalTextAlignment="End" />
+
+							<Label Grid.Row="1" Grid.Column="0"
+								   Text="{Binding Property4}" />
+							<Label Grid.Row="1" Grid.Column="1"
+								   Text="{Binding Property5}" 
+								   HorizontalTextAlignment="Center" />
+							<Label Grid.Row="1" Grid.Column="2"
+								   Text="{Binding Property6}" 
+								   HorizontalTextAlignment="End" />
+
+							<Label Grid.Row="2" Grid.Column="0"
+								   Text="{Binding Property7}" />
+							<Label Grid.Row="2" Grid.Column="1"
+								   Text="{Binding Property8}" 
+								   HorizontalTextAlignment="Center" />
+							<Label Grid.Row="2" Grid.Column="2"
+								   Text="{Binding Property9}"
+								   HorizontalTextAlignment="End" />
+						</Grid>
+					</ViewCell>
+				</DataTemplate>
+			</ListView.ItemTemplate>
+		</ListView>
+
+		<ListView x:Name="ListWithSetters"
+				  Grid.Column="1" Grid.Row="1">
+			<ListView.ItemTemplate>
+				<DataTemplate>
+					<ViewCell>
+						<main:NumberCell />
+					</ViewCell>
+				</DataTemplate>
+			</ListView.ItemTemplate>
+		</ListView>
+	</Grid>
+</ContentPage>
