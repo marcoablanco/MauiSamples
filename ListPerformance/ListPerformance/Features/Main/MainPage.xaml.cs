@@ -12,7 +12,7 @@ public partial class MainPage
 		base.OnAppearing();
 		var items = new List<NumberModel>();
 
-		for (int i = 0; i < 250; i++)
+		for (int i = 0; i < 20; i++)
 		{
 			items.Add(new NumberModel
 			{

@@ -3,13 +3,19 @@
 			 xmlns:main="clr-namespace:ListPerformance.Features.Main"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="ListPerformance.Features.Main.MainPage">
+	<ContentPage.Resources>
+		<ResourceDictionary>
+			<Shadow x:Key="DefaultShadow" />
+		</ResourceDictionary>
+	</ContentPage.Resources>
 
 	<Grid ColumnDefinitions="*,*" RowDefinitions="*,*"
 		  ColumnSpacing="10" RowSpacing="10"
 		  Padding="10">
 
 		<CollectionView x:Name="CollectionWithBindings"
-						Grid.Column="0">
+						Grid.Column="0" 
+						Shadow="{StaticResource DefaultShadow}">
 			<CollectionView.ItemTemplate>
 				<DataTemplate x:DataType="main:NumberModel">
 					<Grid RowDefinitions="*,Auto,*" ColumnDefinitions="*,Auto,*"
@@ -46,7 +52,8 @@
 		</CollectionView>
 
 		<CollectionView x:Name="CollectionWithSetters"
-						Grid.Column="1">
+						Grid.Column="1"
+						Shadow="{StaticResource DefaultShadow}">
 			<CollectionView.ItemTemplate>
 				<DataTemplate>
 					<main:NumberCell />
@@ -55,7 +62,9 @@
 		</CollectionView>
 
 		<ListView x:Name="ListWithBindings"
-				  Grid.Column="0" Grid.Row="1">
+				  Grid.Column="0" Grid.Row="1"
+				  Shadow="{StaticResource DefaultShadow}"
+				  HasUnevenRows="False" RowHeight="100">
 			<ListView.ItemTemplate>
 				<DataTemplate x:DataType="main:NumberModel">
 					<ViewCell>
@@ -94,7 +103,9 @@
 		</ListView>
 
 		<ListView x:Name="ListWithSetters"
-				  Grid.Column="1" Grid.Row="1">
+				  Grid.Column="1" Grid.Row="1"
+				  Shadow="{StaticResource DefaultShadow}"
+				  HasUnevenRows="False" RowHeight="100">
 			<ListView.ItemTemplate>
 				<DataTemplate>
 					<ViewCell>
