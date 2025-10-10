@@ -1,0 +1,109 @@
+<bases:BaseContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+					   xmlns:bases="clr-namespace:Calculadora.App.Bases"
+					   xmlns:calculator="clr-namespace:Calculadora.App.Features.Calculator"
+					   xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+					   x:Class="Calculadora.App.Features.Calculator.CalculatorPage"
+					   x:TypeArguments="calculator:CalculatorViewModel"
+					   Background="LightBlue">
+	<Grid RowDefinitions="*,3*">
+
+		<Border Grid.Row="0"
+				BackgroundColor="White"
+				StrokeShape="RoundRectangle 10"
+				Margin="10">
+			<Label x:Name="LblResult"
+				   FontSize="24"
+				   HorizontalTextAlignment="End" VerticalTextAlignment="Center" />
+		</Border>
+
+		<Grid Grid.Row="1"
+			  RowDefinitions="*,*,*,*,*" ColumnDefinitions="*,*,*,*"
+			  Padding="10">
+			<Grid.Resources>
+				<ResourceDictionary>
+					<Style TargetType="Button">
+						<Setter Property="Background" Value="LightGray" />
+						<Setter Property="BorderColor" Value="Gray" />
+						<Setter Property="BorderWidth" Value="1" />
+						<Setter Property="CornerRadius" Value="5" />
+						<Setter Property="FontSize" Value="20" />
+						<Setter Property="Margin" Value="2" />
+						<Setter Property="TextColor" Value="Black" />
+					</Style>
+				</ResourceDictionary>
+			</Grid.Resources>
+
+			<Button x:Name="BtnSum"
+					Grid.Row="0" Grid.Column="0"
+					Text="+" CommandParameter="+" />
+
+			<Button x:Name="BtnSubtract"
+					Grid.Row="0" Grid.Column="1"
+					Text="-" CommandParameter="-" />
+
+			<Button x:Name="BtnMultiply"
+					Grid.Row="0" Grid.Column="2"
+					Text="X" CommandParameter="*" />
+
+			<Button x:Name="BtnDivide"
+					Grid.Row="0" Grid.Column="3"
+					Text="/" CommandParameter="/" />
+
+			<Button x:Name="Btn7"
+					Grid.Row="1" Grid.Column="0"
+					Text="7" CommandParameter="7" />
+
+			<Button x:Name="Btn8"
+					Grid.Row="1" Grid.Column="1"
+					Text="8" CommandParameter="8" />
+
+			<Button x:Name="Btn9"
+					Grid.Row="1" Grid.Column="2"
+					Text="9" CommandParameter="9" />
+
+			<Button x:Name="BtnDelete"
+					Grid.Row="1" Grid.Column="3"
+					Text="Delete" CommandParameter="D" />
+
+			<Button x:Name="Btn4"
+					Grid.Row="2" Grid.Column="0"
+					Text="4" CommandParameter="4" />
+
+			<Button x:Name="Btn5"
+					Grid.Row="2" Grid.Column="1"
+					Text="5" CommandParameter="5" />
+
+			<Button x:Name="Btn6"
+					Grid.Row="2" Grid.Column="2"
+					Text="6" CommandParameter="6" />
+
+			<Button x:Name="BtnClean"
+					Grid.Row="2" Grid.Column="3"
+					Text="Clean" CommandParameter="C" />
+
+			<Button x:Name="Btn1"
+					Grid.Row="3" Grid.Column="0"
+					Text="1" CommandParameter="1" />
+
+			<Button x:Name="Btn2"
+					Grid.Row="3" Grid.Column="1"
+					Text="2" CommandParameter="2" />
+
+			<Button x:Name="Btn3"
+					Grid.Row="3" Grid.Column="2"
+					Text="3" CommandParameter="3" />
+
+			<Button x:Name="BtnEqual"
+					Grid.Row="3" Grid.Column="3" Grid.RowSpan="2"
+					Text="=" CommandParameter="=" />
+
+			<Button x:Name="Btn0"
+					Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
+					Text="0" CommandParameter="0" />
+
+			<Button x:Name="BtnDot"
+					Grid.Row="4" Grid.Column="2"
+					Text="." CommandParameter="." />
+		</Grid>
+	</Grid>
+</bases:BaseContentPage>
