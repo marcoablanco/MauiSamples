@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿namespace Calculator.Maui;
 
-namespace Calculator.Maui;
-
-using Calculator.Maui.Services;
+using Calculator.Logic.AppConfiguration;
+using Calculator.Maui.Features.Calculator;
+using Microsoft.Extensions.Logging;
 
 public static class MauiProgram
 {
@@ -36,7 +36,7 @@ public static class MauiProgram
 	public static MauiAppBuilder RegisterServices(this MauiAppBuilder builder)
 	{
 		// Register services here
-		Calculator.Logic.AppConfiguration.AppBootstrapper.InitAppLogic(builder.Services);
+		AppBootstrapper.InitAppLogic(builder.Services);
 		return builder;
 	}
 
@@ -47,8 +47,8 @@ public static class MauiProgram
 			   .AddTransient<AppShell>()
 
 			   // Calculator
-			   .AddTransient<Features.Calculator.CalculatorPage>()
-			   .AddTransient<Features.Calculator.CalculatorViewModel>();
+			   .AddTransient<CalculatorPage>()
+			   .AddTransient<CalculatorViewModel>();
 
 		return builder;
 	}

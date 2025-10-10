@@ -1,7 +1,7 @@
 namespace Calculator.Maui.Features.Calculator;
 
+using global::Calculator.Logic.Services;
 using global::Calculator.Maui.Bases;
-using global::Calculator.Maui.Services;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
