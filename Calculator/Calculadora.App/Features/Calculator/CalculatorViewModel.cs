@@ -13,7 +13,7 @@ public partial class CalculatorViewModel : BaseViewModel
 	private readonly IOperationServices operationServices;
 
 	private string currentInput;
-	private string @operator;
+	private string operatorValue;
 	private double? firstOperand;
 
 	public CalculatorViewModel(IServiceProvider services) : base(services)
@@ -22,7 +22,7 @@ public partial class CalculatorViewModel : BaseViewModel
 		operationServices = services.GetRequiredService<IOperationServices>();
 
 		currentInput = string.Empty;
-		@operator = string.Empty;
+		operatorValue = string.Empty;
 		firstOperand = null;
 		Display = "0";
 
@@ -43,16 +43,14 @@ public partial class CalculatorViewModel : BaseViewModel
 			return Display;
 
 		if (char.IsDigit(arg[0]))
-		{
 			return HandleDigit(arg);
-		}
 
 		switch (arg)
 		{
 			case ".":
 				return HandleDot();
-			case var op when op is "+" or "-" or "*" or "/":
-				return HandleOperator(op);
+			case "+" or "-" or "*" or "/":
+				return HandleOperator(arg);
 			case "=":
 				return HandleEquals();
 			case "C":
@@ -93,7 +91,7 @@ public partial class CalculatorViewModel : BaseViewModel
 			return Display;
 
 		firstOperand = val;
-		@operator = op;
+		operatorValue = op;
 		currentInput = "";
 
 		return Display;
@@ -101,14 +99,14 @@ public partial class CalculatorViewModel : BaseViewModel
 
 	private string HandleEquals()
 	{
-		if (firstOperand == null || string.IsNullOrEmpty(@operator) || !decimal.TryParse(currentInput, out var second))
+		if (firstOperand == null || string.IsNullOrEmpty(operatorValue) || !decimal.TryParse(currentInput, out var second))
 			return Display;
 
 		try
 		{
 			decimal result = 0;
 			var first = Convert.ToDecimal(firstOperand.Value);
-			result = @operator switch
+			result = operatorValue switch
 					 {
 						 "+" => operationServices.Add(first, second),
 						 "-" => operationServices.Subtract(first, second),
@@ -123,7 +121,7 @@ public partial class CalculatorViewModel : BaseViewModel
 			Display = "Error: Division by zero";
 		}
 		firstOperand = null;
-		@operator = "";
+		operatorValue = "";
 		currentInput = "";
 		return Display;
 	}
@@ -133,7 +131,7 @@ public partial class CalculatorViewModel : BaseViewModel
 		Display = "0";
 		currentInput = "";
 		firstOperand = null;
-		@operator = "";
+		operatorValue = "";
 		return Display;
 	}
 
