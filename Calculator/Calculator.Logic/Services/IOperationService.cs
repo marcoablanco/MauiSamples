@@ -1,6 +1,6 @@
 namespace Calculator.Logic.Services;
 
-public interface IOperationServices
+public interface IOperationService
 {
 	decimal Add(decimal firstOperand, decimal secondOperand);
 	decimal Subtract(decimal firstOperand, decimal secondOperand);

@@ -2,7 +2,9 @@ namespace Calculator.Logic.AppConfiguration;
 
 using Calculator.Logic.Services;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 
+[ExcludeFromCodeCoverage]
 public static class AppBootstrapper
 {
 	public static IServiceCollection InitAppLogic(this IServiceCollection services)
@@ -12,7 +14,6 @@ public static class AppBootstrapper
 
 	private static IServiceCollection RegisterServices(this IServiceCollection services)
 	{
-		return services.AddTransient<IOperationServices>(s=> new OperationServices(s));
+		return services.AddTransient<IOperationService>(s => new OperationService(s));
 	}
-
 }

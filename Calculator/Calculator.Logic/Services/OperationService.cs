@@ -3,14 +3,14 @@ namespace Calculator.Logic.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-public class OperationServices : IOperationServices
+public class OperationService : IOperationService
 {
-	private readonly ILogger<OperationServices> logger;
+	private readonly ILogger<OperationService> logger;
 
-	public OperationServices(IServiceProvider serviceProvider)
+	public OperationService(IServiceProvider serviceProvider)
 	{
-		logger = serviceProvider.GetRequiredService<ILogger<OperationServices>>();
-		logger.LogDebug("OperationServices created.");
+		logger = serviceProvider.GetRequiredService<ILogger<OperationService>>();
+		logger.LogDebug("OperationService created.");
 	}
 
 	public decimal Add(decimal firstOperand, decimal secondOperand)

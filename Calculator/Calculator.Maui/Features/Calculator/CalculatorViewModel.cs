@@ -10,7 +10,7 @@ using System.Globalization;
 public partial class CalculatorViewModel : BaseViewModel
 {
 	private readonly ILogger<CalculatorViewModel> logger;
-	private readonly IOperationServices operationServices;
+	private readonly IOperationService operationService;
 
 	private string currentInput;
 	private string operatorValue;
@@ -19,7 +19,7 @@ public partial class CalculatorViewModel : BaseViewModel
 	public CalculatorViewModel(IServiceProvider services) : base(services)
 	{
 		logger = services.GetRequiredService<ILogger<CalculatorViewModel>>();
-		operationServices = services.GetRequiredService<IOperationServices>();
+		operationService = services.GetRequiredService<IOperationService>();
 
 		currentInput = string.Empty;
 		operatorValue = string.Empty;
@@ -108,10 +108,10 @@ public partial class CalculatorViewModel : BaseViewModel
 			var first = Convert.ToDecimal(firstOperand.Value);
 			result = operatorValue switch
 					 {
-						 "+" => operationServices.Add(first, second),
-						 "-" => operationServices.Subtract(first, second),
-						 "*" => operationServices.Multiply(first, second),
-						 "/" => operationServices.Divide(first, second),
+						 "+" => operationService.Add(first, second),
+						 "-" => operationService.Subtract(first, second),
+						 "*" => operationService.Multiply(first, second),
+						 "/" => operationService.Divide(first, second),
 						 _ => result
 					 };
 			Display = result.ToString(CultureInfo.InvariantCulture);
