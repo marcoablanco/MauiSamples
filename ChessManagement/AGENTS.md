@@ -32,7 +32,7 @@ ChessManagement.sln
 │   │                             LegalityValidator, GameResultEvaluator
 │   └── Services/                 store de partidas
 ├── ChessSDK.Mcp/              ← adaptador MCP (stdio). Sin lógica.
-├── ChessSDK.UnitTests/        ← MSTest + AwesomeAssertions (137 tests, en verde)
+├── ChessSDK.UnitTests/        ← MSTest + AwesomeAssertions (147 tests, en verde)
 ├── PLAN.md                    ← plan de implementación en 8 fases
 └── .github/copilot-instructions.md
 ```
@@ -45,8 +45,19 @@ primitivas y traducción de tipos.
 
 **Prueba práctica:** si el código haría falta igualmente en una app MAUI, va en `ChessSDK`.
 
-Ya hubo que corregir esto una vez: `GameSessionModel`, `PlacedPieceModel` y el store estaban
-en el proyecto MCP y se movieron al SDK. No repitas el error.
+Esto **incluye la presentación de conceptos de dominio**: el texto del estado de la partida, la
+lista de movimientos legales agrupada por pieza o el nombre español de una pieza son cosas que
+una app o una web necesitarían igual. Van en `Formatters/`, no en el adaptador.
+
+**Corolario sobre las pruebas:** los proyectos de salida (`ChessSDK.Mcp`, y mañana la app o la
+web) son intermediarios y **no se prueban**. Si algo merece un test, es que es lógica, y entonces
+es que va en `ChessSDK`. Verifica siempre contra `ChessSDK.UnitTests`; el sondeo por stdio sirve
+para comprobar el protocolo una vez, no como bucle de desarrollo.
+
+Ya hubo que corregir esto dos veces: `GameSessionModel`, `PlacedPieceModel` y el store estaban en
+el proyecto MCP y se movieron al SDK; y en la Fase 5 se colaron en `ChessGameTools` la línea de
+estado, el formateo de los movimientos legales y el bucle de deshacer N jugadas.
+No repitas el error.
 
 ---
 
@@ -66,7 +77,7 @@ en el proyecto MCP y se movieron al SDK. No repitas el error.
 | `Models/Boards/BoardModel.cs` | `AllFiles` / `AllRanks` |
 | `Models/ChessConcepts/GameColorModel.cs` | White / Black, con `Opposite`, `Symbol`, `PawnDirection` |
 | `Models/ChessConcepts/MoveModel.cs` | Pieza, origen, destino, captura, promoción y `Kind` (`MoveKindEnum`) |
-| `Models/ChessConcepts/GameSessionModel.cs` | Envuelve `PositionModel` + historial. Valida contra los legales. `Undo()` |
+| `Models/ChessConcepts/GameSessionModel.cs` | Envuelve `PositionModel` + historial. Valida contra los legales. `Undo()`, `TryResign()`, `Winner` |
 | `Models/ChessConcepts/MatchModel.cs` | **Huérfano**, nadie lo usa |
 | `Models/Players/PlayerModel.cs` | **Huérfano**, nadie lo usa |
 | `Models/ChessConcepts/PgnHeadersModel.cs` | Las siete etiquetas obligatorias del PGN |
@@ -74,6 +85,8 @@ en el proyecto MCP y se movieron al SDK. No repitas el error.
 | `Models/ChessConcepts/Formatters/*.cs` | SAN inglés, español, figurine, LAN (sólo el mapa de letras) |
 | `Models/ChessConcepts/Formatters/MoveNotationFormatterFactory.cs` | Resuelve clave → formatter |
 | `Models/ChessConcepts/Formatters/MoveHistoryFormatter.cs` | Numera: `1. e4 e5 2. Nf3` |
+| `Models/ChessConcepts/Formatters/GameResultFormatter.cs` | Resultado en una frase: `jaque mate, ganan las negras` |
+| `Models/ChessConcepts/Formatters/PieceNameFormatter.cs` | Nombre español de la pieza, singular y plural |
 | `Enums/MoveKindEnum.cs` | Normal, DoublePawnPush, EnPassant, CastleKingSide, CastleQueenSide |
 | `Enums/GameResultEnum.cs` | InProgress, Checkmate, Stalemate, InsufficientMaterial, ThreefoldRepetition, FiftyMoveRule, Resigned |
 | `Notation/FenSerializer.cs` | `Serialize` / `Deserialize` / `TryDeserialize` (relojes opcionales) |
@@ -91,11 +104,17 @@ en el proyecto MCP y se movieron al SDK. No repitas el error.
 Program.cs              Host genérico + AddMcpServer + WithStdioServerTransport
                         + WithTools/Resources/PromptsFromAssembly
                         Logs a stderr (stdout es el canal MCP)
-Tools/ChessGameTools.cs      new_game, get_position, make_move,
-                             get_history, list_games, resign_game
+Tools/ChessGameTools.cs      9 tools: new_game, get_position, get_legal_moves, make_move,
+                             undo_move, get_history, list_games, resign_game, delete_game
 Resources/ChessResources.cs  chess://game/{gameId}/fen, chess://game/{gameId}/board
 Prompts/ChessPrompts.cs      play_chess(style), analyze_position(gameId)
 ```
+
+`resign_game` **marca** la partida como abandonada y la conserva; `delete_game` es la que borra.
+Están separadas a propósito: un modelo no debe destruir el historial creyendo que se rinde.
+
+Todas las tools de juego repiten la misma línea de estado, que es lo que el modelo debe mirar:
+`Estado: en juego | Jaque: no | Movimientos legales: 20`.
 
 Verificado funcionando: handshake correcto y `new_game` devuelve el FEN inicial exacto.
 
@@ -103,7 +122,7 @@ Verificado funcionando: handshake correcto y `new_game` devuelve el FEN inicial 
 
 ## 4. Lo que ya funciona y lo que falta
 
-### Hecho (Fases 1 a 4 del `PLAN.md`)
+### Hecho (Fases 1 a 5 del `PLAN.md`)
 
 - **Fase 1 — igualdad.** Todos los value objects tienen `Equals`/`GetHashCode`/`==`.
   `FileModel` y `RankModel` ya no convierten implícitamente a `string` (sólo a `char`),
@@ -119,19 +138,25 @@ Verificado funcionando: handshake correcto y `new_game` devuelve el FEN inicial 
   `SanParser` convierte texto en `MoveModel` **generando los legales y escribiéndolos**, no
   interpretando la cadena; `PgnFormatter` exporta la partida completa.
   `TryApplyMove` acepta ya `Nf3`, `exd5`, `O-O`, `e8=Q` además de `e2e4`.
+- **Fase 5 — adaptador MCP.** 9 tools. `get_legal_moves` (con filtro por casilla) y `undo_move`
+  (con `plies`) son nuevas; `get_position` incluye jaque, resultado y número de legales;
+  `resign_game` marca en vez de borrar y `delete_game` es la que borra; `play_chess` obliga a
+  consultar `get_legal_moves` antes de cada jugada.
 - `GameSessionModel.TryApplyMove` rechaza cualquier jugada ilegal con un mensaje accionable
   (`'e2e5' no es legal. Movimientos legales de la pieza de 'e2': e2e3, e2e4.`) y expone
   `LegalMoves()`, `LegalMovesFrom()`, `IsInCheck`, `Result` y `Undo()`.
 
 Verificado por stdio contra el servidor MCP real: `make_move e2e5` se rechaza, `e2e4` se aplica,
-y la secuencia SAN `e4 e5 Nf3 Nc6 Bb5` devuelve `1. e4 e5 2. Nf3 Nc6 3. Bb5` en `get_history`.
+la secuencia SAN `e4 e5 Nf3 Nc6 Bb5` devuelve `1. e4 e5 2. Nf3 Nc6 3. Bb5` en `get_history`,
+el mate del loco reporta `jaque mate, ganan las negras` y una partida abandonada rechaza
+tanto mover como deshacer.
 
 ### Pendiente
 
-- **Fase 5:** exponer en el MCP `get_legal_moves`, `undo_move`, ampliar `get_position`
-  (`enCheck`, `result`, `legalMoveCount`) y endurecer `ChessPrompts.PlayChess`.
-  El SDK ya tiene todo lo necesario; sólo falta el adaptador.
-- **Fases 6 a 8:** `draw_board`, tests de integración y cliente de Ollama.
+- **Fase 6:** `draw_board` — `BoardAsciiFormatter` y `PieceLetterProvider` en el SDK
+  (puede reaprovechar los mapas de `PieceNameFormatter` y de los formatters SAN),
+  la tool, y actualizar el resource `chess://game/{id}/board`.
+- **Fases 7 y 8:** tests de integración por stdio y cliente de Ollama.
 - No hay `PgnParser`: se exporta PGN pero no se importa.
 
 ---
@@ -273,24 +298,25 @@ commitea y cuándo. Si crees que conviene un commit, propónlo; no lo hagas.
 
 ### Estado
 
-- Rama `main`, con cambios pendientes de commitear por el usuario: las Fases 1 a 4 completas
-  (value objects con igualdad, `PositionModel`, `FenSerializer`, las cuatro clases de `Rules/`,
-  `GameSessionModel` migrado, la notación SAN/PGN y 125 tests nuevos).
+- Rama `main`, con cambios pendientes de commitear por el usuario: la Fase 5 (abandono en el SDK,
+  `get_legal_moves`, `undo_move`, `delete_game`, línea de estado y prompt endurecido) y la
+  documentación de las Fases 4 y 5.
 
 ---
 
 ## 10. Por dónde continuar
 
-Siguiente paso: **Fase 5 del `PLAN.md`** — exponer `get_legal_moves` y `undo_move` en el MCP,
-ampliar `get_position` con `enCheck`/`result`/`legalMoveCount` y endurecer `ChessPrompts.PlayChess`.
-No depende de nada: el SDK tiene toda la lógica lista.
+Siguiente paso: **Fase 6 del `PLAN.md`** — `draw_board`: `BoardAsciiFormatter` y
+`PieceLetterProvider` en el SDK, la tool que delega en ellos y el resource
+`chess://game/{id}/board`. Acuérdate de `Console.OutputEncoding = Encoding.UTF8`.
 
-Ruta crítica (Fases 1 a 4 **completadas**):
+Ruta crítica (Fases 1 a 5 **completadas**):
 
 ```
 Fase 1 igualdad ✔ → Fase 2 PositionModel+FEN ✔ → Fase 3 MoveGenerator+perft ✔ ← HITO
-     → Fase 4 SAN/PGN ✔ → Fase 5 migrar MCP + get_legal_moves   ← siguiente
-     → Fase 6 draw_board → Fase 7 tests integración → Fase 8 Ollama
+     → Fase 4 SAN/PGN ✔ → Fase 5 migrar MCP ✔
+     → Fase 6 draw_board   ← siguiente
+     → Fase 7 tests integración → Fase 8 Ollama
 ```
 
 El hito que valida el proyecto era **perft correcto en Fase 3**: 20 / 400 / 8.902 / 197.281

@@ -3,6 +3,7 @@
 using System.Text;
 using ChessSDK.Enums;
 using ChessSDK.Models.Boards;
+using ChessSDK.Models.ChessConcepts.Formatters;
 using ChessSDK.Notation;
 using ChessSDK.Rules;
 
@@ -17,9 +18,12 @@ public sealed class GameSessionModel
 	private static readonly LegalityValidator legalityValidator = new();
 	private static readonly GameResultEvaluator resultEvaluator = new();
 	private static readonly SanParser sanParser = new();
+	private static readonly GameResultFormatter gameResultFormatter = new();
 
 	private readonly List<MoveModel> history = new();
 	private readonly List<PositionModel> positions = new();
+
+	private GameColorModel? resignedBy;
 
 	public GameSessionModel(string id, GameColorModel humanColor)
 	{
@@ -47,7 +51,22 @@ public sealed class GameSessionModel
 
 	public bool IsInCheck => legalityValidator.IsInCheck(Position);
 
-	public GameResultEnum Result => resultEvaluator.Evaluate(Position, positions);
+	/// <summary>Side that gave the game up, or null if nobody did.</summary>
+	public GameColorModel? ResignedBy => resignedBy;
+
+	/// <summary>Side that won, or null if the game is unfinished or drawn.</summary>
+	public GameColorModel? Winner
+		=> Result switch
+		   {
+			   GameResultEnum.Checkmate => SideToMove.Opposite,
+			   GameResultEnum.Resigned => resignedBy!.Opposite,
+			   _ => null
+		   };
+
+	public GameResultEnum Result
+		=> resignedBy is not null
+			   ? GameResultEnum.Resigned
+			   : resultEvaluator.Evaluate(Position, positions);
 
 	public bool IsOver => Result != GameResultEnum.InProgress;
 
@@ -66,6 +85,29 @@ public sealed class GameSessionModel
 		history.Clear();
 		positions.Clear();
 		positions.Add(PositionModel.StartingPosition);
+		resignedBy = null;
+	}
+
+	/// <summary>
+	/// Gives the game up for one side. The game is over from that moment on, and the position is
+	/// kept exactly as it was so the history and the export still make sense.
+	/// </summary>
+	public bool TryResign(GameColorModel color, out string error)
+	{
+		ArgumentNullException.ThrowIfNull(color);
+
+		error = string.Empty;
+
+		if (IsOver)
+		{
+			error = $"La partida ya ha terminado ({gameResultFormatter.Format(this)}). Nadie puede abandonarla.";
+
+			return false;
+		}
+
+		resignedBy = color;
+
+		return true;
 	}
 
 	public IReadOnlyList<MoveModel> LegalMoves() => legalityValidator.GenerateLegal(Position);
@@ -79,6 +121,13 @@ public sealed class GameSessionModel
 
 	public PlacedPieceModel? PieceAt(string square)
 		=> CoordinateModel.TryParse(square, out var coordinate) ? Position.PieceAt(coordinate) : null;
+
+	public PlacedPieceModel? PieceAt(CoordinateModel square)
+	{
+		ArgumentNullException.ThrowIfNull(square);
+
+		return Position.PieceAt(square);
+	}
 
 	/// <summary>
 	/// Applies a move expressed in long algebraic form: "e2e4", "e7e8q".
@@ -97,7 +146,7 @@ public sealed class GameSessionModel
 
 		if (IsOver)
 		{
-			error = $"La partida ya ha terminado ({Result}). No se pueden aplicar mas movimientos.";
+			error = $"La partida ya ha terminado ({gameResultFormatter.Format(this)}). No se pueden aplicar mas movimientos.";
 
 			return false;
 		}
@@ -162,10 +211,30 @@ public sealed class GameSessionModel
 		return true;
 	}
 
-	/// <summary>Takes back the last move played.</summary>
+	/// <summary>
+	/// Takes back the last <paramref name="plies" /> moves played and returns how many were
+	/// actually undone, which is fewer than asked when the game is shorter than that.
+	/// </summary>
+	public int Undo(int plies)
+	{
+		if (plies < 1)
+			throw new ArgumentOutOfRangeException(nameof(plies), plies, "At least one move has to be undone.");
+
+		var undone = 0;
+
+		while (undone < plies && Undo())
+			undone++;
+
+		return undone;
+	}
+
+	/// <summary>
+	/// Takes back the last move played. Giving up is deliberate and final, so a resigned game
+	/// cannot be rewound: start a new one instead.
+	/// </summary>
 	public bool Undo()
 	{
-		if (history.Count == 0)
+		if (history.Count == 0 || resignedBy is not null)
 			return false;
 
 		history.RemoveAt(history.Count - 1);

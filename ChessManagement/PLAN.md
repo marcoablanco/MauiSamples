@@ -5,11 +5,12 @@ Estado de partida: `ChessSDK` sólo tiene value objects y formatters.
 
 Objetivo: que un LLM local no pueda hacer jugadas ilegales porque el servidor MCP se lo impide.
 
-> **Estado a 25/07/2026: Fases 1, 2, 3 y 4 completadas.** El hito de perft está superado y el SDK ya
-> impide cualquier jugada ilegal. El párrafo de arriba describe el punto de partida, no el actual:
-> `ChessSDK` tiene hoy `PositionModel`, `FenSerializer`, las cuatro clases de `Rules/` y la notación
-> completa (`SanFormatterBase`, `SanParser`, `PgnFormatter`).
-> 137 tests en verde. Siguiente paso: **Fase 5** (exponerlo en el MCP), que ya no depende de nada.
+> **Estado a 25/07/2026: Fases 1 a 5 completadas** (salvo `draw_board`, que es la Fase 6).
+> El hito de perft está superado y el SDK ya impide cualquier jugada ilegal. El párrafo de arriba
+> describe el punto de partida, no el actual: `ChessSDK` tiene hoy `PositionModel`, `FenSerializer`,
+> las cuatro clases de `Rules/` y la notación completa (`SanFormatterBase`, `SanParser`,
+> `PgnFormatter`); el servidor expone 9 tools, entre ellas `get_legal_moves` y `undo_move`.
+> 147 tests en verde. Siguiente paso: **Fase 6** (`draw_board`).
 
 ---
 
@@ -27,6 +28,14 @@ Si una fase necesita añadir un `if` de dominio en `ChessSDK.Mcp`, está mal dis
 | `ChessSDK` | Modelos, reglas, notación, formatters, servicios de partida |
 | `ChessSDK.Mcp` | `Program.cs`, `*Tools`, `*Resources`, `*Prompts` |
 | Futura app/web | `Program.cs`, `*ViewModel` / controladores |
+
+Esto incluye la **presentación de conceptos de dominio**: el estado de la partida en una frase,
+la lista de legales agrupada por pieza o el nombre de una pieza son cosas que una app MAUI
+necesitaría igual. Van en `ChessSDK/Models/ChessConcepts/Formatters/`.
+
+Corolario: los proyectos de salida son intermediarios y **no se prueban**. Todo lo verificable
+está en `ChessSDK.UnitTests`, que es el otro proyecto de salida del SDK. Probar el servidor por
+stdio sirve para validar el protocolo puntualmente, no como bucle de desarrollo.
 
 ---
 
@@ -220,7 +229,7 @@ movimientos legales de 20 partidas aleatorias (>10.000 movimientos). 137 tests e
 
 ---
 
-## Fase 5 — Migración del servidor MCP
+## Fase 5 — Migración del servidor MCP ✔ COMPLETADA (salvo `draw_board`, que es la Fase 6)
 
 ### Tareas
 
@@ -239,6 +248,41 @@ movimientos legales de 20 partidas aleatorias (>10.000 movimientos). 137 tests e
 5. Nueva tool **`undo_move`**.
 6. Nueva tool **`draw_board`** (ver Fase 6).
 7. Endurecer `ChessPrompts.PlayChess`: obligar a `get_legal_moves` antes de cada `make_move`.
+
+### Resultado
+
+Hecho todo salvo `draw_board`, que es la Fase 6 entera. El servidor pasa de 6 a **9 tools**.
+
+En el SDK (lo mínimo, porque es dominio):
+
+- `GameSessionModel.TryResign(color)` + `ResignedBy` + `Winner`. `Result` devuelve ya
+  `GameResultEnum.Resigned`, que hasta ahora no lo producía nadie.
+  El abandono es definitivo: `Undo()` no lo revierte y `Reset()` sí lo limpia.
+- `Formatters/GameResultFormatter.cs`: el resultado en una frase legible
+  (`jaque mate, ganan las negras`, `tablas por repeticion triple`).
+- `Formatters/PieceNameFormatter.cs`: nombre de la pieza en español, singular y plural.
+
+En el adaptador:
+
+- **`get_legal_moves(gameId, from?)`**, `ReadOnly`. Agrupa por pieza de mayor a menor valor y
+  escribe ambas notaciones: `caballos: Nc3 (b1c3), Na3 (b1a3)...`.
+  Con `from` distingue casilla vacía, pieza del rival y pieza sin movimientos.
+- **`undo_move(gameId, plies = 1)`**. Avisa si deshace menos de lo pedido.
+- `get_position`, `make_move`, `new_game` y `undo_move` comparten una línea de estado:
+  `Estado: en juego | Jaque: no | Movimientos legales: 20`. Al terminar, sólo el resultado.
+- **`resign_game(gameId, color?)`** deja de borrar la partida: la marca. Ya no es `Destructive`.
+- **`delete_game`** es la que borra de verdad. Separarlas evita que el modelo destruya el
+  historial creyendo que se rinde.
+- `list_games` muestra el resultado de cada partida.
+- `play_chess` reescrito: el servidor es la única fuente de verdad, `get_legal_moves` es
+  obligatorio antes de cada `make_move`, y un ERROR significa que la jugada **no** se aplicó.
+
+**Decisión:** el texto de salida sigue siendo plano y compacto, no JSON. Un modelo de 8B consume
+mejor prosa corta, y evita reescribir lo que ya funcionaba.
+
+147 tests en verde. Verificado por stdio: `tools/list` devuelve las 9, el filtro por casilla
+funciona, el mate del loco reporta `jaque mate, ganan las negras`, `undo_move plies=2` retrocede
+dos medias jugadas y una partida abandonada rechaza mover y deshacer.
 
 ---
 
@@ -365,8 +409,8 @@ Fase 1 (igualdad) ✔
    └─> Fase 2 (PositionModel + FEN) ✔
           └─> Fase 3 (MoveGenerator + perft) ✔   ← hito crítico superado
                  ├─> Fase 4 (SAN/PGN) ✔
-                 └─> Fase 5 (migración MCP)   ← siguiente
-                        ├─> Fase 6 (draw_board)
+                 └─> Fase 5 (migración MCP) ✔
+                        ├─> Fase 6 (draw_board)   ← siguiente
                         └─> Fase 7 (tests de integración)
                                └─> Fase 8 (Ollama)
 ```

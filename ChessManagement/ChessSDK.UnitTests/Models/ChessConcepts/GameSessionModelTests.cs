@@ -1,12 +1,183 @@
 namespace ChessSDK.UnitTests.Models.ChessConcepts;
 
 using AwesomeAssertions;
+using ChessSDK.Enums;
 using ChessSDK.Models.ChessConcepts;
 using ChessSDK.Notation;
 
 [TestClass]
 public class GameSessionModelTests
 {
+	[TestMethod]
+	public void GivenAGame_WhenASideResigns_ThenTheGameIsOverAndTheOtherSideWins()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+		session.TryApplyMove("e2e4", out _).Should().BeTrue();
+		var fenBeforeResigning = session.ToFen();
+
+		// Act
+		var resigned = session.TryResign(GameColorModel.White, out var error);
+
+		// Assert
+		resigned.Should().BeTrue(error);
+		session.Result.Should().Be(GameResultEnum.Resigned);
+		session.IsOver.Should().BeTrue();
+		session.ResignedBy.Should().BeSameAs(GameColorModel.White);
+		session.Winner.Should().BeSameAs(GameColorModel.Black);
+		session.History.Should().HaveCount(1);
+		session.ToFen().Should().Be(fenBeforeResigning);
+	}
+
+	[TestMethod]
+	public void GivenAResignedGame_WhenAMoveIsApplied_ThenItIsRejected()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+		session.TryResign(GameColorModel.Black, out _).Should().BeTrue();
+
+		// Act
+		var applied = session.TryApplyMove("e2e4", out var error);
+
+		// Assert
+		applied.Should().BeFalse();
+		error.Should().Contain("terminado");
+	}
+
+	[TestMethod]
+	public void GivenAResignedGame_WhenResigningAgain_ThenItIsRejected()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+		session.TryResign(GameColorModel.White, out _).Should().BeTrue();
+
+		// Act
+		var resigned = session.TryResign(GameColorModel.Black, out var error);
+
+		// Assert
+		resigned.Should().BeFalse();
+		error.Should().Contain("terminado");
+		session.ResignedBy.Should().BeSameAs(GameColorModel.White);
+	}
+
+	[TestMethod]
+	public void GivenAResignedGame_WhenUndoing_ThenNothingIsTakenBack()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+		session.TryApplyMove("e2e4", out _).Should().BeTrue();
+		session.TryResign(GameColorModel.White, out _).Should().BeTrue();
+
+		// Act
+		var undone = session.Undo();
+
+		// Assert
+		undone.Should().BeFalse();
+		session.History.Should().HaveCount(1);
+	}
+
+	[TestMethod]
+	public void GivenAResignedGame_WhenReset_ThenTheResignationIsCleared()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+		session.TryResign(GameColorModel.White, out _).Should().BeTrue();
+
+		// Act
+		session.Reset();
+
+		// Assert
+		session.ResignedBy.Should().BeNull();
+		session.Result.Should().Be(GameResultEnum.InProgress);
+		session.ToFen().Should().Be(FenSerializer.StartingPositionFen);
+	}
+
+	[TestMethod]
+	public void GivenACheckmate_WhenTheWinnerIsAsked_ThenItIsTheSideThatDeliveredIt()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+
+		foreach (var move in new[] { "f2f3", "e7e5", "g2g4", "d8h4" })
+			session.TryApplyMove(move, out _).Should().BeTrue();
+
+		// Act
+		var winner = session.Winner;
+
+		// Assert
+		session.Result.Should().Be(GameResultEnum.Checkmate);
+		winner.Should().BeSameAs(GameColorModel.Black);
+	}
+
+	[TestMethod]
+	public void GivenSeveralMoves_WhenSeveralPliesAreUndone_ThenAllOfThemAreTakenBack()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+		var afterFirstMove = string.Empty;
+
+		foreach (var move in new[] { "e2e4", "e7e5", "g1f3" })
+		{
+			session.TryApplyMove(move, out _).Should().BeTrue();
+
+			if (move == "e2e4")
+				afterFirstMove = session.ToFen();
+		}
+
+		// Act
+		var undone = session.Undo(2);
+
+		// Assert
+		undone.Should().Be(2);
+		session.ToFen().Should().Be(afterFirstMove);
+		session.History.Should().HaveCount(1);
+	}
+
+	[TestMethod]
+	public void GivenMorePliesThanPlayed_WhenUndone_ThenOnlyThePlayedOnesAreTakenBack()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+		session.TryApplyMove("e2e4", out _).Should().BeTrue();
+
+		// Act
+		var undone = session.Undo(99);
+
+		// Assert
+		undone.Should().Be(1);
+		session.History.Should().BeEmpty();
+		session.ToFen().Should().Be(FenSerializer.StartingPositionFen);
+	}
+
+	[TestMethod]
+	public void GivenAResignedGame_WhenSeveralPliesAreUndone_ThenNothingIsTakenBack()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+		session.TryApplyMove("e2e4", out _).Should().BeTrue();
+		session.TryResign(GameColorModel.White, out _).Should().BeTrue();
+
+		// Act
+		var undone = session.Undo(2);
+
+		// Assert
+		undone.Should().Be(0);
+		session.History.Should().HaveCount(1);
+	}
+
+	[TestMethod]
+	public void GivenANonPositiveCount_WhenUndoing_ThenItThrows()
+	{
+		// Arrange
+		var session = new GameSessionModel("abc", GameColorModel.White);
+
+		// Act
+		var undoing = () => session.Undo(0);
+
+		// Assert
+		undoing.Should().Throw<ArgumentOutOfRangeException>();
+	}
+
 	[TestMethod]
 	public void GivenANewSession_WhenCreated_ThenItStartsFromTheInitialFen()
 	{
