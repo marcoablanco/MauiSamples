@@ -5,11 +5,11 @@ Estado de partida: `ChessSDK` sólo tiene value objects y formatters.
 
 Objetivo: que un LLM local no pueda hacer jugadas ilegales porque el servidor MCP se lo impide.
 
-> **Estado a 25/07/2026: Fases 1, 2 y 3 completadas.** El hito de perft está superado y el SDK ya
+> **Estado a 25/07/2026: Fases 1, 2, 3 y 4 completadas.** El hito de perft está superado y el SDK ya
 > impide cualquier jugada ilegal. El párrafo de arriba describe el punto de partida, no el actual:
-> `ChessSDK` tiene hoy `PositionModel`, `FenSerializer` y las cuatro clases de `Rules/`.
-> 111 tests en verde. Siguiente paso: Fase 4 (SAN/PGN) o Fase 5 (exponerlo en el MCP), que ya no
-> depende de nada.
+> `ChessSDK` tiene hoy `PositionModel`, `FenSerializer`, las cuatro clases de `Rules/` y la notación
+> completa (`SanFormatterBase`, `SanParser`, `PgnFormatter`).
+> 137 tests en verde. Siguiente paso: **Fase 5** (exponerlo en el MCP), que ya no depende de nada.
 
 ---
 
@@ -173,7 +173,7 @@ Notas de implementación:
 
 ---
 
-## Fase 4 — Notación SAN completa
+## Fase 4 — Notación SAN completa ✔ COMPLETADA
 
 ### Tareas
 
@@ -188,6 +188,35 @@ Notas de implementación:
 
 - Round-trip SAN: parsear y volver a formatear 100 jugadas de una partida real da el mismo texto.
 - La ambigüedad `Nbd2` se resuelve correctamente con dos caballos que alcanzan `d2`.
+
+### Resultado
+
+Archivos nuevos:
+
+| Archivo | Qué hace |
+|---|---|
+| `Models/ChessConcepts/Formatters/SanFormatterBase.cs` | Toda la lógica SAN: desambiguación mínima, `O-O`/`O-O-O`, `+` y `#`. Los tres dialectos sólo aportan el mapa de letras |
+| `Notation/SanParser.cs` | Texto → `MoveModel` |
+| `Notation/PgnFormatter.cs` | Exporta PGN: siete etiquetas, `[SetUp]`/`[FEN]` si la partida no empieza en la inicial, movetext plegado a 80 columnas |
+| `Models/ChessConcepts/PgnHeadersModel.cs` | Las siete etiquetas obligatorias |
+
+`IMoveNotationFormatter` gana la sobrecarga `Format(move, position)`; sin posición se sigue
+escribiendo la forma corta de siempre, así que nada de lo anterior se rompió.
+`MoveHistoryFormatter` replica la partida al numerarla. `GameSessionModel.TryApplyMove` detecta si
+el texto es notación larga y, si no lo es, lo pasa al `SanParser`: el MCP acepta ya `Nf3` y `O-O`.
+
+**Decisión de diseño del parser:** `SanParser` no interpreta la notación. Genera los movimientos
+legales, escribe cada uno y busca la coincidencia. Consecuencias buenas: ni lo ilegal ni lo ambiguo
+puede colarse, acepta varias formas de escribir lo mismo (`0-0`, `e1g1`, `e8=Q`, `e7e8q`) y no
+duplica las reglas de notación. Además guarda la forma *sin* desambiguar, para que `Nd2` con dos
+caballos se responda como **ambiguo** y no como ilegal, que es lo útil para un LLM.
+
+**Ojo con los dialectos:** en español `R` es Rey y en inglés `R` es Rook. Por eso el parser recibe
+un único formatter (inglés por defecto) en vez de aceptar todos a la vez.
+
+Criterios superados: la partida de la Ópera (Morphy, 1858; 33 jugadas con capturas, enroque largo,
+jaques y mate) hace round-trip exacto, y un test lento comprueba el round-trip de **todos** los
+movimientos legales de 20 partidas aleatorias (>10.000 movimientos). 137 tests en verde.
 
 ---
 
@@ -335,8 +364,8 @@ puede alucinar porque el servidor le corta.
 Fase 1 (igualdad) ✔
    └─> Fase 2 (PositionModel + FEN) ✔
           └─> Fase 3 (MoveGenerator + perft) ✔   ← hito crítico superado
-                 ├─> Fase 4 (SAN/PGN)
-                 └─> Fase 5 (migración MCP)
+                 ├─> Fase 4 (SAN/PGN) ✔
+                 └─> Fase 5 (migración MCP)   ← siguiente
                         ├─> Fase 6 (draw_board)
                         └─> Fase 7 (tests de integración)
                                └─> Fase 8 (Ollama)
@@ -349,6 +378,9 @@ Fase 1 (igualdad) ✔
 - `MatchModel` y `PlayerModel` están huérfanos: o se integran en `GameSessionModel` o se eliminan.
 - `LegalityValidator` filtra clonando la posición entera por movimiento. Es correcto y suficiente para jugar, pero si
   alguna vez hace falta velocidad (búsqueda, perft profundo), el camino es detectar clavadas en lugar de simular.
-- `GameSessionModel.TryApplyMove` sólo entiende notación larga; SAN entra en la Fase 4.
+- `GameSessionModel.TryApplyMove` acepta ya notación larga y SAN. ✔ Fase 4
 - `GameSessionModel.Result` recalcula los movimientos legales en cada consulta. Si se nota, cachearlo por posición.
+- `SanParser` genera y escribe todos los legales en cada llamada. Es lo que lo hace incapaz de
+  aceptar algo ilegal, pero es caro; si molesta, indexar por casilla de destino.
+- No hay `PgnParser`: se exporta PGN pero no se importa. Nadie lo necesita todavía.
 

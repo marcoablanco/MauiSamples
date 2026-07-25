@@ -27,12 +27,12 @@ ChessManagement.sln
 ├── ChessSDK/                  ← TODA la lógica de ajedrez
 │   ├── Models/                   value objects, PositionModel, GameSessionModel
 │   ├── Enums/                    MoveKindEnum, GameResultEnum
-│   ├── Notation/                 FenSerializer
+│   ├── Notation/                 FenSerializer, SanParser, PgnFormatter
 │   ├── Rules/                    AttackDetector, MoveGenerator,
 │   │                             LegalityValidator, GameResultEvaluator
 │   └── Services/                 store de partidas
 ├── ChessSDK.Mcp/              ← adaptador MCP (stdio). Sin lógica.
-├── ChessSDK.UnitTests/        ← MSTest + AwesomeAssertions (111 tests, en verde)
+├── ChessSDK.UnitTests/        ← MSTest + AwesomeAssertions (137 tests, en verde)
 ├── PLAN.md                    ← plan de implementación en 8 fases
 └── .github/copilot-instructions.md
 ```
@@ -69,12 +69,16 @@ en el proyecto MCP y se movieron al SDK. No repitas el error.
 | `Models/ChessConcepts/GameSessionModel.cs` | Envuelve `PositionModel` + historial. Valida contra los legales. `Undo()` |
 | `Models/ChessConcepts/MatchModel.cs` | **Huérfano**, nadie lo usa |
 | `Models/Players/PlayerModel.cs` | **Huérfano**, nadie lo usa |
-| `Models/ChessConcepts/Formatters/*.cs` | SAN inglés, español, figurine, LAN |
+| `Models/ChessConcepts/PgnHeadersModel.cs` | Las siete etiquetas obligatorias del PGN |
+| `Models/ChessConcepts/Formatters/SanFormatterBase.cs` | Lógica SAN común: desambiguación, `O-O`, `+`, `#` |
+| `Models/ChessConcepts/Formatters/*.cs` | SAN inglés, español, figurine, LAN (sólo el mapa de letras) |
 | `Models/ChessConcepts/Formatters/MoveNotationFormatterFactory.cs` | Resuelve clave → formatter |
 | `Models/ChessConcepts/Formatters/MoveHistoryFormatter.cs` | Numera: `1. e4 e5 2. Nf3` |
 | `Enums/MoveKindEnum.cs` | Normal, DoublePawnPush, EnPassant, CastleKingSide, CastleQueenSide |
 | `Enums/GameResultEnum.cs` | InProgress, Checkmate, Stalemate, InsufficientMaterial, ThreefoldRepetition, FiftyMoveRule, Resigned |
 | `Notation/FenSerializer.cs` | `Serialize` / `Deserialize` / `TryDeserialize` (relojes opcionales) |
+| `Notation/SanParser.cs` | Texto → `MoveModel`. Casa contra los legales escritos, no interpreta |
+| `Notation/PgnFormatter.cs` | Exporta PGN: siete etiquetas, `[SetUp]`/`[FEN]`, movetext a 80 columnas |
 | `Rules/AttackDetector.cs` | `IsSquareAttacked`. Primitiva de la que dependen jaque y enroque |
 | `Rules/MoveGenerator.cs` | Pseudo-legales por pieza + enroque completamente validado |
 | `Rules/LegalityValidator.cs` | Filtra los que dejan al rey propio en jaque. `IsInCheck` |
@@ -99,7 +103,7 @@ Verificado funcionando: handshake correcto y `new_game` devuelve el FEN inicial 
 
 ## 4. Lo que ya funciona y lo que falta
 
-### Hecho (Fases 1 a 3 del `PLAN.md`)
+### Hecho (Fases 1 a 4 del `PLAN.md`)
 
 - **Fase 1 — igualdad.** Todos los value objects tienen `Equals`/`GetHashCode`/`==`.
   `FileModel` y `RankModel` ya no convierten implícitamente a `string` (sólo a `char`),
@@ -111,20 +115,24 @@ Verificado funcionando: handshake correcto y `new_game` devuelve el FEN inicial 
   movimientos legales, con enroque, al paso y promoción.
   **Perft correcto**: 20 / 400 / 8.902 / 197.281 / 4.865.609 desde la inicial y
   48 / 2.039 / 97.862 en Kiwipete, más otras cuatro posiciones de referencia.
+- **Fase 4 — notación.** `SanFormatterBase` centraliza desambiguación, enroque y `+`/`#`;
+  `SanParser` convierte texto en `MoveModel` **generando los legales y escribiéndolos**, no
+  interpretando la cadena; `PgnFormatter` exporta la partida completa.
+  `TryApplyMove` acepta ya `Nf3`, `exd5`, `O-O`, `e8=Q` además de `e2e4`.
 - `GameSessionModel.TryApplyMove` rechaza cualquier jugada ilegal con un mensaje accionable
   (`'e2e5' no es legal. Movimientos legales de la pieza de 'e2': e2e3, e2e4.`) y expone
   `LegalMoves()`, `LegalMovesFrom()`, `IsInCheck`, `Result` y `Undo()`.
 
-Verificado por stdio contra el servidor MCP real: `make_move e2e5` se rechaza y `e2e4` se aplica.
+Verificado por stdio contra el servidor MCP real: `make_move e2e5` se rechaza, `e2e4` se aplica,
+y la secuencia SAN `e4 e5 Nf3 Nc6 Bb5` devuelve `1. e4 e5 2. Nf3 Nc6 3. Bb5` en `get_history`.
 
 ### Pendiente
 
-- **Fase 4:** `SanParser`, `SanFormatterBase`, desambiguación, `+`/`#`, `PgnFormatter`.
 - **Fase 5:** exponer en el MCP `get_legal_moves`, `undo_move`, ampliar `get_position`
   (`enCheck`, `result`, `legalMoveCount`) y endurecer `ChessPrompts.PlayChess`.
   El SDK ya tiene todo lo necesario; sólo falta el adaptador.
 - **Fases 6 a 8:** `draw_board`, tests de integración y cliente de Ollama.
-- `GameSessionModel` sólo acepta notación larga (`e2e4`); SAN llega en la Fase 4.
+- No hay `PgnParser`: se exporta PGN pero no se importa.
 
 ---
 
@@ -217,6 +225,14 @@ Descartados por tamaño: `mistral-small3.2:24b`, `gpt-oss:20b`.
    sin esperar: el servidor las atiende en paralelo. Al probar a mano, lee cada respuesta
    antes de enviar la siguiente.
 
+8. **Los dialectos SAN chocan.** En español `R` es Rey; en inglés `R` es Rook (torre).
+   Por eso `SanParser` recibe **un solo** formatter (inglés por defecto) en vez de aceptar
+   todos a la vez: aceptarlos juntos convertiría cada `R` en ambiguo.
+
+9. `IMoveNotationFormatter` tiene dos sobrecargas: `Format(move)` escribe la forma corta sin
+   contexto y `Format(move, position)` añade desambiguación y `+`/`#`. Usa siempre la segunda
+   si tienes la posición; la primera existe para no romper lo que ya la usaba.
+
 ---
 
 ## 8. Convenciones de código (resumen)
@@ -257,23 +273,23 @@ commitea y cuándo. Si crees que conviene un commit, propónlo; no lo hagas.
 
 ### Estado
 
-- Rama `main`, con cambios pendientes de commitear por el usuario: las Fases 1 a 3 completas
+- Rama `main`, con cambios pendientes de commitear por el usuario: las Fases 1 a 4 completas
   (value objects con igualdad, `PositionModel`, `FenSerializer`, las cuatro clases de `Rules/`,
-  `GameSessionModel` migrado y 99 tests nuevos).
+  `GameSessionModel` migrado, la notación SAN/PGN y 125 tests nuevos).
 
 ---
 
 ## 10. Por dónde continuar
 
-Siguiente paso: **Fase 4 del `PLAN.md`** (SAN completo y PGN) o directamente la
-**Fase 5** (exponer `get_legal_moves` y `undo_move` en el MCP), que ya no depende de nada:
-el SDK tiene toda la lógica lista.
+Siguiente paso: **Fase 5 del `PLAN.md`** — exponer `get_legal_moves` y `undo_move` en el MCP,
+ampliar `get_position` con `enCheck`/`result`/`legalMoveCount` y endurecer `ChessPrompts.PlayChess`.
+No depende de nada: el SDK tiene toda la lógica lista.
 
-Ruta crítica (Fases 1 a 3 **completadas**):
+Ruta crítica (Fases 1 a 4 **completadas**):
 
 ```
 Fase 1 igualdad ✔ → Fase 2 PositionModel+FEN ✔ → Fase 3 MoveGenerator+perft ✔ ← HITO
-     → Fase 4 SAN/PGN → Fase 5 migrar MCP + get_legal_moves
+     → Fase 4 SAN/PGN ✔ → Fase 5 migrar MCP + get_legal_moves   ← siguiente
      → Fase 6 draw_board → Fase 7 tests integración → Fase 8 Ollama
 ```
 
