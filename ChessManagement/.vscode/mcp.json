@@ -1,0 +1,16 @@
+{
+	"servers": {
+		"chess": {
+			"type": "stdio",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"C:\\Git\\GitHub\\MauiSamples\\ChessManagement\\ChessSDK.Mcp\\ChessSDK.Mcp.csproj",
+				"--verbosity",
+				"quiet"
+			]
+		}
+	}
+}
+
