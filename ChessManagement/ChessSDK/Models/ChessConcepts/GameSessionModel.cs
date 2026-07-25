@@ -1,6 +1,5 @@
 ﻿namespace ChessSDK.Models.ChessConcepts;
 
-using System.Text;
 using ChessSDK.Enums;
 using ChessSDK.Models.Boards;
 using ChessSDK.Models.ChessConcepts.Formatters;
@@ -19,6 +18,7 @@ public sealed class GameSessionModel
 	private static readonly GameResultEvaluator resultEvaluator = new();
 	private static readonly SanParser sanParser = new();
 	private static readonly GameResultFormatter gameResultFormatter = new();
+	private static readonly BoardAsciiFormatter boardAsciiFormatter = new();
 
 	private readonly List<MoveModel> history = new();
 	private readonly List<PositionModel> positions = new();
@@ -245,28 +245,8 @@ public sealed class GameSessionModel
 
 	public string ToFen() => fenSerializer.Serialize(Position);
 
-	public string ToAscii()
-	{
-		var builder = new StringBuilder();
-
-		for (var rankIndex = 7; rankIndex >= 0; rankIndex--)
-		{
-			builder.Append(RankModel.FromIndex(rankIndex).Name).Append(" |");
-
-			for (var fileIndex = 0; fileIndex < 8; fileIndex++)
-			{
-				var placed = Position.PieceAt(rankIndex * 8 + fileIndex);
-				builder.Append(' ').Append(placed?.Symbol ?? '.');
-			}
-
-			builder.AppendLine();
-		}
-
-		builder.AppendLine("   ----------------");
-		builder.AppendLine("    a b c d e f g h");
-
-		return builder.ToString();
-	}
+	/// <summary>Board seen from white, with spanish letters. See <see cref="BoardAsciiFormatter" /> for the rest.</summary>
+	public string ToAscii() => boardAsciiFormatter.Format(Position);
 
 	/// <summary>
 	/// A move looks like long algebraic when it is just two squares (plus an optional promotion

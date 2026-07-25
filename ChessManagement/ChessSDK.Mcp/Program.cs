@@ -1,7 +1,12 @@
-﻿using ChessSDK.Services;
+﻿using System.Text;
+using ChessSDK.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+// El tablero usa caracteres de recuadro Unicode. Sin esto, la consola de Windows los destroza.
+// UTF8Encoding(false) para no emitir BOM, que corromperia el flujo JSON-RPC.
+Console.OutputEncoding = new UTF8Encoding(false);
 
 var builder = Host.CreateApplicationBuilder(args);
 

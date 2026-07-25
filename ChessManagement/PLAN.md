@@ -5,7 +5,7 @@ Estado de partida: `ChessSDK` sólo tiene value objects y formatters.
 
 Objetivo: que un LLM local no pueda hacer jugadas ilegales porque el servidor MCP se lo impide.
 
-> **Estado a 25/07/2026: Fases 1 a 5 completadas** (salvo `draw_board`, que es la Fase 6).
+> **Estado a 25/07/2026: Fases 1 a 6 completadas.**
 > El hito de perft está superado y el SDK ya impide cualquier jugada ilegal. El párrafo de arriba
 > describe el punto de partida, no el actual: `ChessSDK` tiene hoy `PositionModel`, `FenSerializer`,
 > las cuatro clases de `Rules/` y la notación completa (`SanFormatterBase`, `SanParser`,
@@ -286,7 +286,7 @@ dos medias jugadas y una partida abandonada rechaza mover y deshacer.
 
 ---
 
-## Fase 6 — Tool `draw_board`
+## Fase 6 — Tool `draw_board` ✔ COMPLETADA
 
 Tablero ASCII con líneas de recuadro y nomenclatura traducible.
 
@@ -330,10 +330,20 @@ public string DrawBoard(string gameId, string language = "es", string perspectiv
 
 1. **`Formatters/BoardAsciiFormatter.cs`** en `ChessSDK` (es lógica de presentación de dominio, reutilizable desde
    MAUI).
-2. **`Formatters/PieceLetterProvider.cs`**: mapa de letras por idioma, reutilizando los mapas que ya existen en
-   `SpanishSanFormatter` / `EnglishSanFormatter` / `FigurineSanFormatter`.
+2. **`Formatters/PieceLetterFormatter.cs`**: mapa de letras por idioma. Se creó nuevo en vez de reutilizar los
+   mapas de los formatters SAN porque aquellos no tienen letra para el peón (SAN no la usa) y en figurine emplean
+   los símbolos blancos para ambos bandos, mientras que el tablero necesita los de cada color.
+   Nombrado `Formatter` y no `Provider` porque `Provider` no está en la lista de sufijos permitidos.
 3. Tool `draw_board` en `ChessGameTools` que delega en el formatter.
-4. Actualizar el resource `chess://game/{gameId}/board` para usar el nuevo dibujo.
+4. `GameSessionModel.ToAscii()` pasa a delegar en `BoardAsciiFormatter`, así que el resource
+   `chess://game/{gameId}/board` y las demás tools heredan el dibujo nuevo sin tocarlas.
+
+### Resultado
+
+- 7 tests nuevos en `BoardAsciiFormatterTests`, incluido el fixture carácter a carácter. 169 en verde.
+- Comprobado por stdio: 10 tools, y `figurine` + `perspective=black` sale correcto por el cable.
+- `Program.cs` fija `Console.OutputEncoding = new UTF8Encoding(false)`. **Sin BOM a propósito**: el preámbulo
+  de `Encoding.UTF8` corrompería el flujo JSON-RPC.
 
 ### Criterio de aceptación
 

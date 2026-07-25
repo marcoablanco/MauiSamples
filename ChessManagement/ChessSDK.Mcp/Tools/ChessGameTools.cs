@@ -12,6 +12,7 @@ public sealed class ChessGameTools
 	private static readonly GameResultFormatter resultFormatter = new();
 	private static readonly GameStatusFormatter statusFormatter = new();
 	private static readonly LegalMovesFormatter legalMovesFormatter = new();
+	private static readonly BoardAsciiFormatter boardAsciiFormatter = new();
 
 	private readonly IGameStoreService store;
 
@@ -62,6 +63,34 @@ public sealed class ChessGameTools
 				FEN: {session.ToFen()}
 
 				{session.ToAscii()}
+				""";
+	}
+
+	[McpServerTool(Name = "draw_board", ReadOnly = true)]
+	[Description("Dibuja el tablero de la partida con letras de piezas y perspectiva configurables.")]
+	public string DrawBoard(
+		[Description("Identificador de la partida.")] string gameId,
+		[Description("Letras de las piezas: 'es' (TCADRP), 'en' (RNBQKP) o 'figurine' (simbolos unicode). Por defecto 'es'.")]
+		string language = "es",
+		[Description("Lado desde el que se mira el tablero: 'white' o 'black'. Por defecto 'white'.")]
+		string perspective = "white")
+	{
+		var session = store.Find(gameId);
+
+		if (session is null)
+			return NotFound(gameId);
+
+		if (!PieceLetterFormatter.TryParseStyle(language, out var style))
+			return $"ERROR: el idioma debe ser uno de: {string.Join(", ", PieceLetterFormatter.StyleKeys)}.";
+
+		if (!GameColorModel.TryParse(perspective, out var side))
+			return "ERROR: la perspectiva debe ser 'white' o 'black'.";
+
+		return $"""
+				gameId: {session.Id} | Mueven: {session.SideToMove} | Vista desde: {side}
+				{StatusLine(session)}
+
+				{boardAsciiFormatter.Format(session.Position, style, side)}
 				""";
 	}
 

@@ -17,6 +17,7 @@ El proceso habla JSON-RPC por **stdout**; todos los logs van a **stderr** (confi
 |---|---|
 | `new_game` | Crea partida desde la posición inicial. Devuelve `gameId`, FEN, estado y tablero. |
 | `get_position` | FEN, turno, estado (jaque, mate, tablas), número de legales y tablero ASCII. |
+| `draw_board` | Dibuja el tablero. `language`: `es` / `en` / `figurine`. `perspective`: `white` / `black`. |
 | `get_legal_moves` | Todos los movimientos legales agrupados por pieza, en SAN y notación larga. Admite `from` para filtrar por casilla. |
 | `make_move` | Aplica un movimiento. Acepta SAN (`Nf3`, `exd5`, `O-O`, `e8=Q`) y notación larga (`e2e4`, `e7e8q`). |
 | `undo_move` | Deshace los últimos `plies` movimientos (por defecto 1). |
@@ -47,6 +48,9 @@ Por eso **no hay tests de este proyecto**: lo que hay que probar está en `Chess
 Si te ves escribiendo aquí un `if` sobre reglas o sobre cómo redactar algo, va en el SDK.
 
 ## Nota sobre el runtime
+
+Los caracteres de recuadro del tablero son Unicode, así que `Program.cs` fija
+`Console.OutputEncoding` a UTF-8 **sin BOM**: el preámbulo corrompería el flujo JSON-RPC.
 
 El paquete `ModelContextProtocol` requiere APIs de .NET 10 RTM.
 Con el runtime `10.0.0-preview.3` instalado hace falta la referencia explícita a

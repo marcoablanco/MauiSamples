@@ -87,6 +87,8 @@ No repitas el error.
 | `Models/ChessConcepts/Formatters/MoveHistoryFormatter.cs` | Numera: `1. e4 e5 2. Nf3` |
 | `Models/ChessConcepts/Formatters/GameResultFormatter.cs` | Resultado en una frase: `jaque mate, ganan las negras` |
 | `Models/ChessConcepts/Formatters/PieceNameFormatter.cs` | Nombre español de la pieza, singular y plural |
+| `Models/ChessConcepts/Formatters/BoardAsciiFormatter.cs` | Tablero con recuadros Unicode, desde cualquier bando |
+| `Models/ChessConcepts/Formatters/PieceLetterFormatter.cs` | Letra de la pieza en `es` / `en` / `figurine` |
 | `Enums/MoveKindEnum.cs` | Normal, DoublePawnPush, EnPassant, CastleKingSide, CastleQueenSide |
 | `Enums/GameResultEnum.cs` | InProgress, Checkmate, Stalemate, InsufficientMaterial, ThreefoldRepetition, FiftyMoveRule, Resigned |
 | `Notation/FenSerializer.cs` | `Serialize` / `Deserialize` / `TryDeserialize` (relojes opcionales) |
@@ -104,8 +106,9 @@ No repitas el error.
 Program.cs              Host genérico + AddMcpServer + WithStdioServerTransport
                         + WithTools/Resources/PromptsFromAssembly
                         Logs a stderr (stdout es el canal MCP)
-Tools/ChessGameTools.cs      9 tools: new_game, get_position, get_legal_moves, make_move,
-                             undo_move, get_history, list_games, resign_game, delete_game
+Tools/ChessGameTools.cs      10 tools: new_game, get_position, draw_board, get_legal_moves,
+                             make_move, undo_move, get_history, list_games, resign_game,
+                             delete_game
 Resources/ChessResources.cs  chess://game/{gameId}/fen, chess://game/{gameId}/board
 Prompts/ChessPrompts.cs      play_chess(style), analyze_position(gameId)
 ```
@@ -122,7 +125,7 @@ Verificado funcionando: handshake correcto y `new_game` devuelve el FEN inicial 
 
 ## 4. Lo que ya funciona y lo que falta
 
-### Hecho (Fases 1 a 5 del `PLAN.md`)
+### Hecho (Fases 1 a 6 del `PLAN.md`)
 
 - **Fase 1 — igualdad.** Todos los value objects tienen `Equals`/`GetHashCode`/`==`.
   `FileModel` y `RankModel` ya no convierten implícitamente a `string` (sólo a `char`),
@@ -142,6 +145,10 @@ Verificado funcionando: handshake correcto y `new_game` devuelve el FEN inicial 
   (con `plies`) son nuevas; `get_position` incluye jaque, resultado y número de legales;
   `resign_game` marca en vez de borrar y `delete_game` es la que borra; `play_chess` obliga a
   consultar `get_legal_moves` antes de cada jugada.
+- **Fase 6 — dibujo del tablero.** `BoardAsciiFormatter` (recuadros Unicode, perspectiva de
+  cualquiera de los dos bandos) y `PieceLetterFormatter` (`es` / `en` / `figurine`), ambos en el
+  SDK. La tool `draw_board` sólo delega. `ToAscii()` usa ya el dibujo nuevo, así que el resource
+  `chess://game/{id}/board` lo hereda. Son **10 tools**.
 - `GameSessionModel.TryApplyMove` rechaza cualquier jugada ilegal con un mensaje accionable
   (`'e2e5' no es legal. Movimientos legales de la pieza de 'e2': e2e3, e2e4.`) y expone
   `LegalMoves()`, `LegalMovesFrom()`, `IsInCheck`, `Result` y `Undo()`.
@@ -153,9 +160,6 @@ tanto mover como deshacer.
 
 ### Pendiente
 
-- **Fase 6:** `draw_board` — `BoardAsciiFormatter` y `PieceLetterProvider` en el SDK
-  (puede reaprovechar los mapas de `PieceNameFormatter` y de los formatters SAN),
-  la tool, y actualizar el resource `chess://game/{id}/board`.
 - **Fases 7 y 8:** tests de integración por stdio y cliente de Ollama.
 - No hay `PgnParser`: se exporta PGN pero no se importa.
 
@@ -236,8 +240,9 @@ Descartados por tamaño: `mistral-small3.2:24b`, `gpt-oss:20b`.
 3. **Nunca escribir en `Console.Out`** en el proyecto MCP: rompe el protocolo.
    Los logs ya van a stderr en `Program.cs`.
 
-4. **Caracteres Unicode de recuadro** (Fase 6, `draw_board`): hará falta
-   `Console.OutputEncoding = Encoding.UTF8` en `Program.cs`.
+4. **Caracteres Unicode de recuadro** (`draw_board`): `Program.cs` fija
+   `Console.OutputEncoding = new UTF8Encoding(false)`. **Sin BOM a propósito**: el preámbulo
+   de `Encoding.UTF8` se colaría en stdout y corrompería el flujo JSON-RPC.
 
 5. **Perft es la red de seguridad.** Si tocas `MoveGenerator`, `AttackDetector`,
    `LegalityValidator` o `PositionModel.Apply`, ejecuta `PerftTests` completo
@@ -306,17 +311,17 @@ commitea y cuándo. Si crees que conviene un commit, propónlo; no lo hagas.
 
 ## 10. Por dónde continuar
 
-Siguiente paso: **Fase 6 del `PLAN.md`** — `draw_board`: `BoardAsciiFormatter` y
-`PieceLetterProvider` en el SDK, la tool que delega en ellos y el resource
-`chess://game/{id}/board`. Acuérdate de `Console.OutputEncoding = Encoding.UTF8`.
+Siguiente paso: **Fase 7 del `PLAN.md`** — proyecto `ChessSDK.Mcp.IntegrationTests` con ~20
+escenarios por stdio contra el servidor real. Aquí **sí** toca sondear el MCP: es su propósito.
+Recuerda que ese proyecto necesitará el mismo pin de `System.Text.Json 10.0.10`.
 
-Ruta crítica (Fases 1 a 5 **completadas**):
+Ruta crítica (Fases 1 a 6 **completadas**):
 
 ```
 Fase 1 igualdad ✔ → Fase 2 PositionModel+FEN ✔ → Fase 3 MoveGenerator+perft ✔ ← HITO
-     → Fase 4 SAN/PGN ✔ → Fase 5 migrar MCP ✔
-     → Fase 6 draw_board   ← siguiente
-     → Fase 7 tests integración → Fase 8 Ollama
+     → Fase 4 SAN/PGN ✔ → Fase 5 migrar MCP ✔ → Fase 6 draw_board ✔
+     → Fase 7 tests integración   ← siguiente
+     → Fase 8 Ollama
 ```
 
 El hito que valida el proyecto era **perft correcto en Fase 3**: 20 / 400 / 8.902 / 197.281
