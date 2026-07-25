@@ -2,31 +2,23 @@
 
 using ChessSDK.Models.Boards;
 
-public sealed class SpanishSanFormatter : IMoveNotationFormatter
+/// <summary>
+/// Algebraic notation with spanish piece letters: caballo, alfil, torre, dama, rey.
+/// Careful: "R" means king here and rook in english notation.
+/// </summary>
+public sealed class SpanishSanFormatter : SanFormatterBase
 {
-	public string Format(MoveModel move)
+	private static readonly Dictionary<PieceModel, string> letters = new()
 	{
-		var piece = FormatPiece(move.Piece);
+		[PieceModel.Knight] = "C",
+		[PieceModel.Bishop] = "A",
+		[PieceModel.Rook] = "T",
+		[PieceModel.Queen] = "D",
+		[PieceModel.King] = "R"
+	};
 
-		var pawnFile = move.Piece == PieceModel.Pawn && move.IsCapture ? move.From.ToString()[0].ToString() : string.Empty;
-
-		var capture = move.IsCapture ? "x" : "";
-		var dest = move.To.ToString();
-		var promo = move.IsPromotion ? $"={FormatPiece(move.Promotion!)}" : "";
-
-		return $"{pawnFile}{piece}{capture}{dest}{promo}";
-	}
-
-	private static string FormatPiece(PieceModel piece)
+	public SpanishSanFormatter()
+		: base(letters)
 	{
-		return piece switch
-			   {
-				   _ when piece == PieceModel.Knight => "C",
-				   _ when piece == PieceModel.Bishop => "A",
-				   _ when piece == PieceModel.Rook   => "T",
-				   _ when piece == PieceModel.Queen  => "D",
-				   _ when piece == PieceModel.King   => "R",
-				   _ => ""
-			   };
 	}
 }

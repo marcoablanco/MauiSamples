@@ -2,18 +2,24 @@
 
 using ChessSDK.Models.Boards;
 
+/// <summary>
+/// Long algebraic notation: piece letter, origin, destination. It never needs disambiguation,
+/// and it carries no check marks on purpose, so it stays easy to parse by a machine.
+/// </summary>
 public sealed class LanFormatter : IMoveNotationFormatter
 {
 	public string Format(MoveModel move)
 	{
-		var piece = FormatPiece(move.Piece);
-		var from = move.From.ToString();
-		var dest = move.To.ToString();
-		var capture = move.IsCapture ? "x" : "";
-		var promo = move.IsPromotion ? FormatPiece(move.Promotion!) : "";
+		ArgumentNullException.ThrowIfNull(move);
 
-		return $"{piece}{from}{capture}{dest}{promo}";
+		var piece = FormatPiece(move.Piece);
+		var capture = move.IsCapture ? "x" : "";
+		var promotion = move.IsPromotion ? FormatPiece(move.Promotion!) : "";
+
+		return $"{piece}{move.From}{capture}{move.To}{promotion}";
 	}
+
+	public string Format(MoveModel move, PositionModel position) => Format(move);
 
 	private static string FormatPiece(PieceModel piece)
 	{

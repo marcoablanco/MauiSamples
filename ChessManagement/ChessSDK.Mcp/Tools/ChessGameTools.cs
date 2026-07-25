@@ -66,10 +66,10 @@ public sealed class ChessGameTools
 	}
 
 	[McpServerTool(Name = "make_move")]
-	[Description("Aplica un movimiento en notacion larga (por ejemplo 'e2e4' o 'e7e8q') y devuelve la posicion resultante.")]
+	[Description("Aplica un movimiento y devuelve la posicion resultante. Acepta notacion larga ('e2e4', 'e7e8q') y algebraica ('Nf3', 'exd5', 'O-O', 'e8=Q').")]
 	public string MakeMove(
 		[Description("Identificador de la partida.")] string gameId,
-		[Description("Movimiento en notacion larga: casilla de origen + casilla de destino + pieza de promocion opcional.")]
+		[Description("Movimiento en notacion larga (origen+destino+promocion opcional) o algebraica estandar.")]
 		string move)
 	{
 		var session = store.Find(gameId);
@@ -106,7 +106,7 @@ public sealed class ChessGameTools
 
 		var formatter = new MoveHistoryFormatter(MoveNotationFormatterFactory.Create(notation));
 
-		return formatter.Format(session.History);
+		return formatter.Format(session.History, session.StartingPosition);
 	}
 
 	[McpServerTool(Name = "list_games", ReadOnly = true)]

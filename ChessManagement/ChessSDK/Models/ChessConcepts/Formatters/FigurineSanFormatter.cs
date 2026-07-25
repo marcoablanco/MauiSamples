@@ -2,34 +2,23 @@
 
 using ChessSDK.Models.Boards;
 
-public sealed class FigurineSanFormatter : IMoveNotationFormatter
+/// <summary>
+/// Algebraic notation with unicode piece symbols, which reads the same in any language.
+/// The white symbols are used for both sides, as is customary.
+/// </summary>
+public sealed class FigurineSanFormatter : SanFormatterBase
 {
-	public string Format(MoveModel move)
+	private static readonly Dictionary<PieceModel, string> letters = new()
 	{
-		var piece = FormatPiece(move.Piece);
+		[PieceModel.Knight] = "\u2658",
+		[PieceModel.Bishop] = "\u2657",
+		[PieceModel.Rook] = "\u2656",
+		[PieceModel.Queen] = "\u2655",
+		[PieceModel.King] = "\u2654"
+	};
 
-		var pawnFile =
-			move.Piece == PieceModel.Pawn && move.IsCapture
-				? move.From.ToString()[0].ToString()
-				: string.Empty;
-
-		var capture = move.IsCapture ? "x" : "";
-		var dest = move.To.ToString();
-		var promo = move.IsPromotion ? $"={FormatPiece(move.Promotion!)}" : "";
-
-		return $"{pawnFile}{piece}{capture}{dest}{promo}";
-	}
-
-	private static string FormatPiece(PieceModel piece)
+	public FigurineSanFormatter()
+		: base(letters)
 	{
-		return piece switch
-			   {
-				   _ when piece == PieceModel.Knight => "♘",
-				   _ when piece == PieceModel.Bishop => "♗",
-				   _ when piece == PieceModel.Rook   => "♖",
-				   _ when piece == PieceModel.Queen  => "♕",
-				   _ when piece == PieceModel.King   => "♔",
-				   _ => ""
-			   };
 	}
 }

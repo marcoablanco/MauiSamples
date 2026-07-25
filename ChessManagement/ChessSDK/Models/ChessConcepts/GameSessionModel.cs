@@ -16,6 +16,7 @@ public sealed class GameSessionModel
 	private static readonly FenSerializer fenSerializer = new();
 	private static readonly LegalityValidator legalityValidator = new();
 	private static readonly GameResultEvaluator resultEvaluator = new();
+	private static readonly SanParser sanParser = new();
 
 	private readonly List<MoveModel> history = new();
 	private readonly List<PositionModel> positions = new();
@@ -32,6 +33,9 @@ public sealed class GameSessionModel
 	public GameColorModel HumanColor { get; }
 
 	public PositionModel Position => positions[^1];
+
+	/// <summary>Position the game started from. Needed to replay the history into notation.</summary>
+	public PositionModel StartingPosition => positions[0];
 
 	public GameColorModel SideToMove => Position.SideToMove;
 
@@ -100,12 +104,8 @@ public sealed class GameSessionModel
 
 		var normalized = move.Trim().Replace("-", "").Replace("x", "").ToLowerInvariant();
 
-		if (normalized.Length is not (4 or 5))
-		{
-			error = $"'{move}' no tiene formato valido. Usa origen+destino, por ejemplo 'e2e4' o 'e7e8q'.";
-
-			return false;
-		}
+		if (!LooksLongAlgebraic(normalized))
+			return TryApplyNotatedMove(move, out error);
 
 		if (!CoordinateModel.TryParse(normalized[..2], out var from))
 		{
@@ -197,6 +197,29 @@ public sealed class GameSessionModel
 		builder.AppendLine("    a b c d e f g h");
 
 		return builder.ToString();
+	}
+
+	/// <summary>
+	/// A move looks like long algebraic when it is just two squares (plus an optional promotion
+	/// letter). Anything else — "Nf3", "O-O", "exd5" — is handed over to the SAN parser.
+	/// </summary>
+	private static bool LooksLongAlgebraic(string normalized)
+		=> normalized.Length is 4 or 5
+		   && char.IsLetter(normalized[0])
+		   && char.IsDigit(normalized[1])
+		   && char.IsLetter(normalized[2])
+		   && char.IsDigit(normalized[3]);
+
+	/// <summary>Applies a move written in algebraic notation: "Nf3", "exd5", "O-O", "e8=Q+".</summary>
+	private bool TryApplyNotatedMove(string move, out string error)
+	{
+		if (!sanParser.TryParse(Position, move, out var chosen, out error))
+			return false;
+
+		positions.Add(Position.Apply(chosen));
+		history.Add(chosen);
+
+		return true;
 	}
 
 	private string DescribeIllegalMove(string normalized, CoordinateModel from, IReadOnlyList<MoveModel> legalMoves)

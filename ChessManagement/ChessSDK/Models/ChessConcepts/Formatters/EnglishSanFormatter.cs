@@ -2,34 +2,20 @@
 
 using ChessSDK.Models.Boards;
 
-public sealed class EnglishSanFormatter : IMoveNotationFormatter
+/// <summary>Standard algebraic notation with english piece letters: "Nbd2", "exd5", "e8=Q+".</summary>
+public sealed class EnglishSanFormatter : SanFormatterBase
 {
-	public string Format(MoveModel move)
+	private static readonly Dictionary<PieceModel, string> letters = new()
 	{
-		var piece = FormatPiece(move.Piece);
+		[PieceModel.Knight] = "N",
+		[PieceModel.Bishop] = "B",
+		[PieceModel.Rook] = "R",
+		[PieceModel.Queen] = "Q",
+		[PieceModel.King] = "K"
+	};
 
-		var pawnFile =
-			move.Piece == PieceModel.Pawn && move.IsCapture
-				? move.From.ToString()[0].ToString()
-				: string.Empty;
-
-		var capture = move.IsCapture ? "x" : "";
-		var dest = move.To.ToString();
-		var promo = move.IsPromotion ? $"={FormatPiece(move.Promotion!)}" : "";
-
-		return $"{pawnFile}{piece}{capture}{dest}{promo}";
-	}
-
-	private static string FormatPiece(PieceModel piece)
+	public EnglishSanFormatter()
+		: base(letters)
 	{
-		return piece switch
-			   {
-				   _ when piece == PieceModel.Knight => "N",
-				   _ when piece == PieceModel.Bishop => "B",
-				   _ when piece == PieceModel.Rook   => "R",
-				   _ when piece == PieceModel.Queen  => "Q",
-				   _ when piece == PieceModel.King   => "K",
-				   _ => ""
-			   };
 	}
 }
