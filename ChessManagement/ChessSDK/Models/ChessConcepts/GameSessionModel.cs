@@ -1,17 +1,24 @@
-namespace ChessSDK.Models.ChessConcepts;
+﻿namespace ChessSDK.Models.ChessConcepts;
 
 using System.Text;
+using ChessSDK.Enums;
 using ChessSDK.Models.Boards;
+using ChessSDK.Notation;
+using ChessSDK.Rules;
 
 /// <summary>
-/// Mutable state of a single chess game.
-/// NOTE: legality is only checked at a basic level (origin occupancy, turn and own-piece capture).
-/// Full move generation / check detection is still pending (see PLAN.md).
+/// State of a single chess game: the current position, every position that has occurred and the
+/// list of moves played. Every move is validated against the legal move generator, so an illegal
+/// move can never be applied.
 /// </summary>
 public sealed class GameSessionModel
 {
-	private readonly Dictionary<string, PlacedPieceModel> board = new(StringComparer.Ordinal);
+	private static readonly FenSerializer fenSerializer = new();
+	private static readonly LegalityValidator legalityValidator = new();
+	private static readonly GameResultEvaluator resultEvaluator = new();
+
 	private readonly List<MoveModel> history = new();
+	private readonly List<PositionModel> positions = new();
 
 	public GameSessionModel(string id, GameColorModel humanColor)
 	{
@@ -21,14 +28,24 @@ public sealed class GameSessionModel
 	}
 
 	public string Id { get; }
+
 	public GameColorModel HumanColor { get; }
-	public GameColorModel SideToMove { get; private set; } = GameColorModel.White;
-	public int FullMoveNumber { get; private set; } = 1;
-	public int HalfMoveClock { get; private set; }
+
+	public PositionModel Position => positions[^1];
+
+	public GameColorModel SideToMove => Position.SideToMove;
+
+	public int FullMoveNumber => Position.FullMoveNumber;
+
+	public int HalfMoveClock => Position.HalfMoveClock;
+
 	public IReadOnlyList<MoveModel> History => history;
 
-	private static bool IsValidSquare(string square)
-		=> square.Length == 2 && square[0] is >= 'a' and <= 'h' && square[1] is >= '1' and <= '8';
+	public bool IsInCheck => legalityValidator.IsInCheck(Position);
+
+	public GameResultEnum Result => resultEvaluator.Evaluate(Position, positions);
+
+	public bool IsOver => Result != GameResultEnum.InProgress;
 
 	private static PieceModel? ParsePromotion(char letter)
 		=> letter switch
@@ -40,40 +57,28 @@ public sealed class GameSessionModel
 			   _ => null
 		   };
 
-	private static char ToFenLetter(PlacedPieceModel placed)
-	{
-		var letter = placed.Piece switch
-					 {
-						 _ when ReferenceEquals(placed.Piece, PieceModel.Pawn)   => 'p',
-						 _ when ReferenceEquals(placed.Piece, PieceModel.Knight) => 'n',
-						 _ when ReferenceEquals(placed.Piece, PieceModel.Bishop) => 'b',
-						 _ when ReferenceEquals(placed.Piece, PieceModel.Rook)   => 'r',
-						 _ when ReferenceEquals(placed.Piece, PieceModel.Queen)  => 'q',
-						 _ => 'k'
-					 };
-
-		return ReferenceEquals(placed.Color, GameColorModel.White) ? char.ToUpperInvariant(letter) : letter;
-	}
-
 	public void Reset()
 	{
-		board.Clear();
 		history.Clear();
-		SideToMove = GameColorModel.White;
-		FullMoveNumber = 1;
-		HalfMoveClock = 0;
+		positions.Clear();
+		positions.Add(PositionModel.StartingPosition);
+	}
 
-		PlaceBackRank('1', GameColorModel.White);
-		PlacePawnRank('2', GameColorModel.White);
-		PlacePawnRank('7', GameColorModel.Black);
-		PlaceBackRank('8', GameColorModel.Black);
+	public IReadOnlyList<MoveModel> LegalMoves() => legalityValidator.GenerateLegal(Position);
+
+	public IReadOnlyList<MoveModel> LegalMovesFrom(CoordinateModel from)
+	{
+		ArgumentNullException.ThrowIfNull(from);
+
+		return LegalMoves().Where(move => move.From == from).ToArray();
 	}
 
 	public PlacedPieceModel? PieceAt(string square)
-		=> board.GetValueOrDefault(square);
+		=> CoordinateModel.TryParse(square, out var coordinate) ? Position.PieceAt(coordinate) : null;
 
 	/// <summary>
 	/// Applies a move expressed in long algebraic form: "e2e4", "e7e8q".
+	/// The move is rejected unless it is one of the legal moves of the position.
 	/// </summary>
 	public bool TryApplyMove(string move, out string error)
 	{
@@ -82,6 +87,14 @@ public sealed class GameSessionModel
 		if (string.IsNullOrWhiteSpace(move))
 		{
 			error = "El movimiento no puede estar vacio. Usa notacion larga, por ejemplo 'e2e4'.";
+
+			return false;
+		}
+
+		if (IsOver)
+		{
+			error = $"La partida ya ha terminado ({Result}). No se pueden aplicar mas movimientos.";
+
 			return false;
 		}
 
@@ -90,47 +103,21 @@ public sealed class GameSessionModel
 		if (normalized.Length is not (4 or 5))
 		{
 			error = $"'{move}' no tiene formato valido. Usa origen+destino, por ejemplo 'e2e4' o 'e7e8q'.";
+
 			return false;
 		}
 
-		var from = normalized[..2];
-		var to = normalized[2..4];
-
-		if (!IsValidSquare(from))
+		if (!CoordinateModel.TryParse(normalized[..2], out var from))
 		{
-			error = $"La casilla de origen '{from}' no existe.";
+			error = $"La casilla de origen '{normalized[..2]}' no existe.";
+
 			return false;
 		}
 
-		if (!IsValidSquare(to))
+		if (!CoordinateModel.TryParse(normalized[2..4], out var to))
 		{
-			error = $"La casilla de destino '{to}' no existe.";
-			return false;
-		}
+			error = $"La casilla de destino '{normalized[2..4]}' no existe.";
 
-		if (from == to)
-		{
-			error = "El origen y el destino no pueden ser la misma casilla.";
-			return false;
-		}
-
-		if (!board.TryGetValue(from, out var moving))
-		{
-			error = $"No hay ninguna pieza en '{from}'. Consulta el tablero antes de mover.";
-			return false;
-		}
-
-		if (!ReferenceEquals(moving.Color, SideToMove))
-		{
-			error = $"Le toca mover a {SideToMove}, pero la pieza de '{from}' es de {moving.Color}.";
-			return false;
-		}
-
-		var target = board.GetValueOrDefault(to);
-
-		if (target is not null && ReferenceEquals(target.Color, moving.Color))
-		{
-			error = $"No puedes capturar tu propia pieza en '{to}'.";
 			return false;
 		}
 
@@ -143,77 +130,64 @@ public sealed class GameSessionModel
 			if (promotion is null)
 			{
 				error = $"'{normalized[4]}' no es una pieza de promocion valida. Usa q, r, b o n.";
+
 				return false;
 			}
 		}
 
-		board.Remove(from);
-		board[to] = new PlacedPieceModel(promotion ?? moving.Piece, moving.Color);
-		history.Add(new MoveModel(moving.Piece, from, to, target?.Piece, promotion));
+		var legalMoves = LegalMoves();
 
-		HalfMoveClock = target is not null || ReferenceEquals(moving.Piece, PieceModel.Pawn) ? 0 : HalfMoveClock + 1;
+		var chosen = legalMoves.FirstOrDefault(
+			candidate => candidate.From == from
+						 && candidate.To == to
+						 && (promotion is null || ReferenceEquals(candidate.Promotion, promotion)));
 
-		if (ReferenceEquals(SideToMove, GameColorModel.Black))
-			FullMoveNumber++;
+		if (chosen is null)
+		{
+			error = DescribeIllegalMove(normalized, from, legalMoves);
 
-		SideToMove = ReferenceEquals(SideToMove, GameColorModel.White) ? GameColorModel.Black : GameColorModel.White;
+			return false;
+		}
+
+		if (chosen.IsPromotion && promotion is null)
+		{
+			error = $"El peon de '{from}' promociona en '{to}'. Indica la pieza, por ejemplo '{from}{to}q'.";
+
+			return false;
+		}
+
+		positions.Add(Position.Apply(chosen));
+		history.Add(chosen);
 
 		return true;
 	}
 
-	public string ToFen()
+	/// <summary>Takes back the last move played.</summary>
+	public bool Undo()
 	{
-		var builder = new StringBuilder();
+		if (history.Count == 0)
+			return false;
 
-		for (var rankIndex = BoardModel.AllRanks.Length - 1; rankIndex >= 0; rankIndex--)
-		{
-			var rank = BoardModel.AllRanks[rankIndex];
-			var empty = 0;
+		history.RemoveAt(history.Count - 1);
+		positions.RemoveAt(positions.Count - 1);
 
-			foreach (var file in BoardModel.AllFiles)
-			{
-				var piece = board.GetValueOrDefault($"{file}{rank}");
-
-				if (piece is null)
-				{
-					empty++;
-					continue;
-				}
-
-				if (empty > 0)
-				{
-					builder.Append(empty);
-					empty = 0;
-				}
-
-				builder.Append(ToFenLetter(piece));
-			}
-
-			if (empty > 0)
-				builder.Append(empty);
-
-			if (rankIndex > 0)
-				builder.Append('/');
-		}
-
-		var side = ReferenceEquals(SideToMove, GameColorModel.White) ? 'w' : 'b';
-
-		return $"{builder} {side} {CastlingRights()} - {HalfMoveClock} {FullMoveNumber}";
+		return true;
 	}
+
+	public string ToFen() => fenSerializer.Serialize(Position);
 
 	public string ToAscii()
 	{
 		var builder = new StringBuilder();
 
-		for (var rankIndex = BoardModel.AllRanks.Length - 1; rankIndex >= 0; rankIndex--)
+		for (var rankIndex = 7; rankIndex >= 0; rankIndex--)
 		{
-			var rank = BoardModel.AllRanks[rankIndex];
-			builder.Append(rank.ToString()).Append(" |");
+			builder.Append(RankModel.FromIndex(rankIndex).Name).Append(" |");
 
-			foreach (var file in BoardModel.AllFiles)
+			for (var fileIndex = 0; fileIndex < 8; fileIndex++)
 			{
-				var piece = board.GetValueOrDefault($"{file}{rank}");
-				builder.Append(' ').Append(piece is null ? '.' : ToFenLetter(piece));
+				var placed = Position.PieceAt(rankIndex * 8 + fileIndex);
+				builder.Append(' ').Append(placed?.Symbol ?? '.');
 			}
 
 			builder.AppendLine();
@@ -225,53 +199,21 @@ public sealed class GameSessionModel
 		return builder.ToString();
 	}
 
-
-	private void PlaceBackRank(char rank, GameColorModel color)
+	private string DescribeIllegalMove(string normalized, CoordinateModel from, IReadOnlyList<MoveModel> legalMoves)
 	{
-		PieceModel[] order =
-		{
-			PieceModel.Rook, PieceModel.Knight, PieceModel.Bishop, PieceModel.Queen,
-			PieceModel.King, PieceModel.Bishop, PieceModel.Knight, PieceModel.Rook
-		};
+		var placed = Position.PieceAt(from);
 
-		for (var i = 0; i < order.Length; i++)
-			board[$"{BoardModel.AllFiles[i]}{rank}"] = new PlacedPieceModel(order[i], color);
-	}
+		if (placed is null)
+			return $"'{normalized}' no es legal: no hay ninguna pieza en '{from}'. Consulta el tablero antes de mover.";
 
-	private void PlacePawnRank(char rank, GameColorModel color)
-	{
-		foreach (var file in BoardModel.AllFiles)
-			board[$"{file}{rank}"] = new PlacedPieceModel(PieceModel.Pawn, color);
-	}
+		if (!ReferenceEquals(placed.Color, SideToMove))
+			return $"'{normalized}' no es legal: le toca mover a {SideToMove} y la pieza de '{from}' es de {placed.Color}.";
 
-	/// <summary>
-	/// Heuristic castling rights: king and rook still on their home squares.
-	/// Will be replaced once ChessSDK tracks real castling state.
-	/// </summary>
-	private string CastlingRights()
-	{
-		var rights = new StringBuilder();
+		var fromThisSquare = legalMoves.Where(candidate => candidate.From == from).Select(candidate => candidate.ToLongAlgebraic()).ToArray();
 
-		if (IsHome("e1", PieceModel.King, GameColorModel.White))
-		{
-			if (IsHome("h1", PieceModel.Rook, GameColorModel.White)) rights.Append('K');
-			if (IsHome("a1", PieceModel.Rook, GameColorModel.White)) rights.Append('Q');
-		}
+		if (fromThisSquare.Length == 0)
+			return $"'{normalized}' no es legal. La pieza de '{from}' no tiene ningun movimiento legal en esta posicion.";
 
-		if (IsHome("e8", PieceModel.King, GameColorModel.Black))
-		{
-			if (IsHome("h8", PieceModel.Rook, GameColorModel.Black)) rights.Append('k');
-			if (IsHome("a8", PieceModel.Rook, GameColorModel.Black)) rights.Append('q');
-		}
-
-		return rights.Length == 0 ? "-" : rights.ToString();
-	}
-
-	private bool IsHome(string square, PieceModel piece, GameColorModel color)
-	{
-		var placed = board.GetValueOrDefault(square);
-
-		return placed is not null && ReferenceEquals(placed.Piece, piece) && ReferenceEquals(placed.Color, color);
+		return $"'{normalized}' no es legal. Movimientos legales de la pieza de '{from}': {string.Join(", ", fromThisSquare)}.";
 	}
 }
-

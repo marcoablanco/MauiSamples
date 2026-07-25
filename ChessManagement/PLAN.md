@@ -5,6 +5,12 @@ Estado de partida: `ChessSDK` sólo tiene value objects y formatters.
 
 Objetivo: que un LLM local no pueda hacer jugadas ilegales porque el servidor MCP se lo impide.
 
+> **Estado a 25/07/2026: Fases 1, 2 y 3 completadas.** El hito de perft está superado y el SDK ya
+> impide cualquier jugada ilegal. El párrafo de arriba describe el punto de partida, no el actual:
+> `ChessSDK` tiene hoy `PositionModel`, `FenSerializer` y las cuatro clases de `Rules/`.
+> 111 tests en verde. Siguiente paso: Fase 4 (SAN/PGN) o Fase 5 (exponerlo en el MCP), que ya no
+> depende de nada.
+
 ---
 
 ## Principio arquitectónico
@@ -24,7 +30,7 @@ Si una fase necesita añadir un `if` de dominio en `ChessSDK.Mcp`, está mal dis
 
 ---
 
-## Convención nueva a añadir a `copilot-instructions.md`
+## Convención nueva a añadir a `copilot-instructions.md` ✔ YA APLICADA
 
 | Sufijo             | Uso                                                         |
 |--------------------|-------------------------------------------------------------|
@@ -34,7 +40,7 @@ Si una fase necesita añadir un `if` de dominio en `ChessSDK.Mcp`, está mal dis
 
 ---
 
-## Fase 1 — Igualdad en los value objects
+## Fase 1 — Igualdad en los value objects ✔ COMPLETADA
 
 **Por qué primero:** sin `Equals`/`GetHashCode` no hay diccionarios de posición, ni comparación de casillas, ni
 detección de repetición triple. Todo lo demás se apoya en esto.
@@ -58,9 +64,22 @@ detección de repetición triple. Todo lo demás se apoya en esto.
 - Un `HashSet<CoordinateModel>` con 64 casillas distintas tiene `Count == 64`.
 - Tests: `CoordinateModelTests`, `FileModelTests`, `RankModelTests`, `PieceModelTests`.
 
+### Resultado
+
+Los tres criterios cumplidos, 36 tests nuevos. Además de lo planeado:
+
+- Las conversiones desde `char` / `string` devuelven la **instancia canónica** en vez de crear una nueva, así que el
+  código anterior basado en `ReferenceEquals` sigue siendo correcto.
+- `CoordinateModel` cachea las 64 casillas y añade `TryOffset`, `TryParse` y `FromIndexes`, que el generador de la
+  Fase 3 usa intensivamente.
+- `GameColorModel` gana `Opposite`, `Symbol` y `PawnDirection`; `PlacedPieceModel`, igualdad por valor, `Symbol` FEN y
+  12 instancias cacheadas vía `Get`.
+- Se eliminó la conversión implícita a `string` de `FileModel` y `RankModel`. **No la devuelvas**: con `operator ==`
+  definido provocaría CS0034.
+
 ---
 
-## Fase 2 — Estado de posición y FEN
+## Fase 2 — Estado de posición y FEN ✔ COMPLETADA
 
 ### Tareas
 
@@ -80,9 +99,24 @@ detección de repetición triple. Todo lo demás se apoya en esto.
   paso y sin derechos de enroque).
 - FEN inicial exacto: `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`.
 
+### Resultado
+
+Ambos criterios cumplidos (`FenSerializerTests`, 9 tests; `PositionModelTests`, 12 tests). Desviaciones respecto al
+plan:
+
+- `PlacedPieceModel` ya estaba en `ChessSDK`, no hubo que moverlo.
+- Hizo falta un tipo extra no previsto: `Enums/MoveKindEnum.cs`. Sin él, `Apply` no puede saber si un movimiento es
+  al paso o un enroque, porque eso no se deduce de origen y destino. `MoveModel` gana un `Kind` opcional al final del
+  constructor, así que las llamadas existentes no cambian.
+- `PositionModel` añade `ToRepetitionKey()`, que la Fase 3 usa para la repetición triple.
+- `TryDeserialize` acepta FEN de 4 campos (sin relojes), porque casi todas las posiciones de referencia publicadas los
+  omiten.
+- `GameSessionModel` se migró aquí del todo (no sólo el FEN): envuelve `PositionModel`, guarda todas las posiciones
+  jugadas y expone `Undo()`. Eso adelanta la tarea 1 de la Fase 5.
+
 ---
 
-## Fase 3 — Generador de movimientos legales
+## Fase 3 — Generador de movimientos legales ✔ COMPLETADA
 
 **El núcleo del proyecto.** Sin esto el MCP no aporta garantías.
 
@@ -115,6 +149,28 @@ depth 1 = 48, depth 2 = 2.039, depth 3 = 97.862.
 
 Tests en `PerftTests`, con los de profundidad ≥ 4 marcados como categoría `Slow`.
 
+### Resultado ✔ HITO SUPERADO
+
+Las ocho cifras del criterio son exactas. Se añadieron cuatro posiciones trampa más, todas correctas a profundidad 3:
+
+| Posición | FEN | d1 | d2 | d3 |
+|---|---|---|---|---|
+| Al paso / peones | `8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -` | 14 | 191 | 2.812 |
+| Promociones | `r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -` | 6 | 264 | 9.467 |
+| Talkchess | `rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8` | 44 | 1.486 | 62.379 |
+| Steve Maker | `r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10` | 46 | 2.079 | 89.890 |
+
+Notas de implementación:
+
+- El enroque se valida **entero dentro de `MoveGenerator`** (casillas vacías, rey no en jaque, casillas intermedias no
+  atacadas, torre presente). La regla de "no enrocar a través de jaque" no se puede deducir de la posición resultante,
+  así que no puede quedarse en el filtro de legalidad.
+- `LegalityValidator` filtra aplicando el movimiento y comprobando el rey propio. Es la vía lenta pero evidente;
+  perft 5 (4,8 M nodos) tarda ~2 s en Release, suficiente.
+- `GameResultEvaluator.Evaluate` recibe opcionalmente la lista de posiciones jugadas para la repetición triple. El
+  orden de decisión es: sin movimientos legales → mate o ahogado; material insuficiente; repetición; 50 jugadas.
+- Ejecuta el bucle rápido con `--filter "TestCategory!=Slow"`; los perft profundos, en Release.
+
 ---
 
 ## Fase 4 — Notación SAN completa
@@ -139,8 +195,11 @@ Tests en `PerftTests`, con los de profundidad ≥ 4 marcados como categoría `Sl
 
 ### Tareas
 
-1. `GameSessionModel` deja de tener diccionario propio: pasa a envolver
-   `PositionModel` + historial + resultado, y expone `Undo()`.
+1. ~~`GameSessionModel` deja de tener diccionario propio: pasa a envolver
+   `PositionModel` + historial + resultado, y expone `Undo()`.~~ **Ya hecho en la Fase 2.**
+   El SDK expone además `LegalMoves()`, `LegalMovesFrom(from)`, `IsInCheck`, `Result` e `IsOver`,
+   y `TryApplyMove` ya rechaza lo ilegal con el mensaje accionable del punto 3.
+   Lo que queda de esta fase es **sólo adaptador MCP**.
 2. Nueva tool **`get_legal_moves`**
     - Parámetros: `gameId`, `from` opcional (para filtrar por casilla de origen).
     - Devuelve la lista en notación larga **y** SAN, agrupada por pieza.
@@ -273,9 +332,9 @@ puede alucinar porque el servidor le corta.
 ## Orden de ejecución y dependencias
 
 ```
-Fase 1 (igualdad)
-   └─> Fase 2 (PositionModel + FEN)
-          └─> Fase 3 (MoveGenerator + perft)   ← hito crítico
+Fase 1 (igualdad) ✔
+   └─> Fase 2 (PositionModel + FEN) ✔
+          └─> Fase 3 (MoveGenerator + perft) ✔   ← hito crítico superado
                  ├─> Fase 4 (SAN/PGN)
                  └─> Fase 5 (migración MCP)
                         ├─> Fase 6 (draw_board)
@@ -288,4 +347,8 @@ Fase 1 (igualdad)
 - Quitar el pin de `System.Text.Json 10.0.10` al actualizar al runtime .NET 10 final.
 - `InMemoryGameStoreService` pierde las partidas al reiniciar; valorar `GameRepository`.
 - `MatchModel` y `PlayerModel` están huérfanos: o se integran en `GameSessionModel` o se eliminan.
+- `LegalityValidator` filtra clonando la posición entera por movimiento. Es correcto y suficiente para jugar, pero si
+  alguna vez hace falta velocidad (búsqueda, perft profundo), el camino es detectar clavadas en lugar de simular.
+- `GameSessionModel.TryApplyMove` sólo entiende notación larga; SAN entra en la Fase 4.
+- `GameSessionModel.Result` recalcula los movimientos legales en cada consulta. Si se nota, cachearlo por posición.
 
