@@ -1,3 +1,27 @@
+> **Antes de escribir código, lee [`AGENTS.md`](../AGENTS.md)**: contiene el estado real del
+> repositorio, el entorno, las trampas conocidas y las decisiones ya tomadas.
+> El trabajo pendiente está en [`PLAN.md`](../PLAN.md).
+
+## Git: la IA no toca el repositorio
+
+El repositorio es la herramienta del usuario para **revisar** los cambios del agente.
+Cualquier operación de git por parte de la IA ensucia esa revisión y está prohibida.
+
+**Nunca ejecutes:**
+
+- `git commit`, `git push`
+- `git add` / staging de cualquier tipo
+- `git reset`, `git revert`, `git checkout`, `git restore`, `git stash`
+- `git merge`, `git rebase`, `git cherry-pick`
+- `git branch`, `git switch`, `git tag`
+- `git clean`, ni borrado masivo de archivos versionados
+
+**Sí puedes usar** comandos de sólo lectura para orientarte: `git status`, `git diff`,
+`git log`, `git show`.
+
+Regla: los cambios se dejan **en el árbol de trabajo, sin indexar**. El usuario decide qué
+se commitea y cuándo. Si crees que conviene un commit, propónlo; no lo hagas.
+
 El orden en C# es:
 
 A partir de ahora, cuando generes clases C#, sigue este orden:
@@ -105,4 +129,3 @@ Está **prohibido** en un proyecto de salida:
 - Cualquier `if` sobre lógica de dominio que pudiera necesitarse desde otra salida.
 
 Regla práctica: si el código haría falta igualmente en una app MAUI, va en `ChessSDK`.
-
