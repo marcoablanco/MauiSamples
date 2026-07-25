@@ -1,10 +1,9 @@
 namespace ChessSDK.Mcp.Tools;
 
 using System.ComponentModel;
-using System.Text;
-using ChessSDK.Mcp.Services;
 using ChessSDK.Models.ChessConcepts;
 using ChessSDK.Models.ChessConcepts.Formatters;
+using ChessSDK.Services;
 using ModelContextProtocol.Server;
 
 [McpServerToolType]
@@ -105,25 +104,9 @@ public sealed class ChessGameTools
 		if (session.History.Count == 0)
 			return "Todavia no se ha jugado ningun movimiento.";
 
-		IMoveNotationFormatter formatter = notation.ToLowerInvariant() switch
-										   {
-											   "san-es" or "es" => new SpanishSanFormatter(),
-											   "figurine" => new FigurineSanFormatter(),
-											   "lan" => new LanFormatter(),
-											   _ => new EnglishSanFormatter()
-										   };
+		var formatter = new MoveHistoryFormatter(MoveNotationFormatterFactory.Create(notation));
 
-		var builder = new StringBuilder();
-
-		for (var i = 0; i < session.History.Count; i++)
-		{
-			if (i % 2 == 0)
-				builder.Append(i / 2 + 1).Append(". ");
-
-			builder.Append(formatter.Format(session.History[i])).Append(' ');
-		}
-
-		return builder.ToString().TrimEnd();
+		return formatter.Format(session.History);
 	}
 
 	[McpServerTool(Name = "list_games", ReadOnly = true)]

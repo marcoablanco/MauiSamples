@@ -1,6 +1,5 @@
-namespace ChessSDK.Mcp.Models;
+namespace ChessSDK.Models.Boards;
 
-using ChessSDK.Models.Boards;
 using ChessSDK.Models.ChessConcepts;
 
 /// <summary>
@@ -22,4 +21,3 @@ public sealed class PlacedPieceModel
 
 	public override string ToString() => $"{Color} {Piece}";
 }
-

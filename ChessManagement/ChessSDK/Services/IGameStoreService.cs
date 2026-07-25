@@ -1,6 +1,5 @@
-namespace ChessSDK.Mcp.Services;
+namespace ChessSDK.Services;
 
-using ChessSDK.Mcp.Models;
 using ChessSDK.Models.ChessConcepts;
 
 public interface IGameStoreService

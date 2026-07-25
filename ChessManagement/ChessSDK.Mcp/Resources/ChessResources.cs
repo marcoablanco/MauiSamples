@@ -1,7 +1,7 @@
 namespace ChessSDK.Mcp.Resources;
 
 using System.ComponentModel;
-using ChessSDK.Mcp.Services;
+using ChessSDK.Services;
 using ModelContextProtocol.Server;
 
 [McpServerResourceType]

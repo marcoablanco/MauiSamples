@@ -1,4 +1,4 @@
-﻿using ChessSDK.Mcp.Services;
+﻿using ChessSDK.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

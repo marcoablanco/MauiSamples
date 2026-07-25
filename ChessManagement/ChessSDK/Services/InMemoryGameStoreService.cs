@@ -1,7 +1,6 @@
-namespace ChessSDK.Mcp.Services;
+namespace ChessSDK.Services;
 
 using System.Collections.Concurrent;
-using ChessSDK.Mcp.Models;
 using ChessSDK.Models.ChessConcepts;
 
 public sealed class InMemoryGameStoreService : IGameStoreService

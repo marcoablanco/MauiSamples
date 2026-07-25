@@ -1,13 +1,12 @@
-namespace ChessSDK.Mcp.Models;
+namespace ChessSDK.Models.ChessConcepts;
 
 using System.Text;
 using ChessSDK.Models.Boards;
-using ChessSDK.Models.ChessConcepts;
 
 /// <summary>
 /// Mutable state of a single chess game.
 /// NOTE: legality is only checked at a basic level (origin occupancy, turn and own-piece capture).
-/// Full move generation / check detection lives in ChessSDK and is still pending.
+/// Full move generation / check detection is still pending (see PLAN.md).
 /// </summary>
 public sealed class GameSessionModel
 {
